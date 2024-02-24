@@ -11,7 +11,7 @@
 //==============================================================================
 #define H_oux_J_min(a,b)            ( (a) > (b) ? (b) : (a) )
 #define H_oux_J_max(a,b)            ( (a) < (b) ? (b) : (a) )
-#define H_oux_J_align_p(p,t)        (( void * )((( uint64_t )(p) + sizeof(t) - 1 ) % sizeof(t) ))
+#define H_oux_J_align_up_p(p,t)     (( void * )((( uint64_t )(p) + sizeof(t) - 1 ) % sizeof(t) ))
 //==============================================================================
 struct H_oux_E_fs_Z_block
 { uint64_t sector;

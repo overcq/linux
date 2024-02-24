@@ -40,6 +40,7 @@ H_oux_E_fs_Q_device_I_read_sector( uint64_t sector
 , struct page *page
 ){  struct bio *bio = bio_alloc( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].bdev_handle->bdev, 1, REQ_OP_READ, GFP_KERNEL );
     bio->bi_iter.bi_sector = 4 * 2 * sector;
+    bio->bi_end_io = 0;
     if( bio_add_page( bio, page, H_oux_E_fs_S_sector_size, 0 ))
     {   bdev_release( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].bdev_handle );
         H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].bdev_handle = 0; // Zamiast realokacji.
@@ -74,45 +75,190 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M, char __user *, pathname
     struct page *page = alloc_page( GFP_KERNEL );
     if( !page )
     {   error = -ENOMEM;
-        goto Error;
+        goto Error_0;
     }
     error = H_oux_E_fs_Q_device_I_read_sector( 0, page );
     if(error)
-        goto Error;
+        goto Error_0;
     char *sector = page_address(page);
     if( strncmp( sector, H_oux_E_fs_Q_device_S_ident, sizeof( H_oux_E_fs_Q_device_S_ident )))
     {   error = -ENODEV;
-        goto Error;
+        goto Error_0;
     }
-    // Odczyt tablicy bloków do pamięci operacyjnej.
-    uint64_t *block_table_n = H_oux_J_align_p( sector, uint64_t );
+    uint64_t *block_table_n = H_oux_J_align_up_p( sector, uint64_t );
     H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table_n = *block_table_n;
-    struct H_oux_E_fs_Z_block *block_table = H_oux_J_align_p(( char * )block_table_n + sizeof( H_oux_E_fs_Q_device_S_ident ), struct H_oux_E_fs_Z_block );
+    uint64_t file_table_start = block_table_n[1];
+    uint64_t file_table_n = block_table_n[2];
+    H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file_n = block_table_n[3];
+    uint64_t directory_table_start = block_table_n[4];
+    uint64_t directory_table_n = block_table_n[5];
+    H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory_n = block_table_n[6];
+    struct H_oux_E_fs_Z_block *block_table = H_oux_J_align_up_p( sizeof( H_oux_E_fs_Q_device_S_ident ) + ( char * )&block_table_n[7], struct H_oux_E_fs_Z_block );
     p = kmalloc_array( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table ), GFP_KERNEL );
     if( !p )
     {   error = -ENOMEM;
-        goto Error;
+        goto Error_0;
     }
     H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table = p;
+    p = kmalloc_array( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file ), GFP_KERNEL );
+    if( !p )
+    {   error = -ENOMEM;
+        goto Error_1;
+    }
+    H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file = p;
+    p = kmalloc_array( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory ), GFP_KERNEL );
+    if( !p )
+    {   error = -ENOMEM;
+        goto Error_2;
+    }
+    H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory = p;
+    // Odczyt tablicy bloków do pamięci operacyjnej.
     uint64_t n = H_oux_J_min( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table_n, ( H_oux_E_fs_S_sector_size - ( uint64_t )block_table ) / sizeof( *block_table ));
     for( uint64_t i = 0; i != n; i++ ) // Czyta wpisy pliku tablicy bloków znajdujące się w pierwszym sektorze.
         H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[i] = block_table[i];
     if( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table_n > n )
-    {   struct H_oux_E_fs_Z_block *block_table = ( void * )sector;
         for( uint64_t block_table_i = n; block_table_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table_n; ) // Czyta wszystkie pozostałe wpisy pliku tablicy bloków.
             for( uint64_t sector_i = 0; sector_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ block_table_i ].n; sector_i++ ) // Czyta kolejne sektory z szeregu ciągłych.
             {   error = H_oux_E_fs_Q_device_I_read_sector( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ block_table_i ].sector + sector_i, page );
                 if(error)
-                    goto Error;
+                    goto Error_3;
+                struct H_oux_E_fs_Z_block *block_table = ( void * )sector;
                 uint64_t n = H_oux_J_min( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table_n - block_table_i, H_oux_E_fs_S_sector_size / sizeof( *block_table ));
                 for( uint64_t i = 0; i != n; i++ ) // Czyta wpisy pliku tablicy bloków znajdujące się w bieżącym sektorze.
-                    H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ block_table_i++ ] = block_table[i];
+                    H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ block_table_i++ ] = block_table[i]; // Założenie, że dane są upakowane w pamięci.
+            }
+    // Oczyt tablicy plików do pamięci operacyjnej.
+    for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file_n; )
+    {   unsigned continue_from = 0;
+        uint64_t char_i;
+        for( uint64_t file_table_i = 0; file_table_i != file_table_n; file_table_i++ )
+            for( uint64_t sector_i = 0; sector_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ file_table_start + file_table_i ].n; sector_i++ )
+            {   error = H_oux_E_fs_Q_device_I_read_sector( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ file_table_start + file_table_i ].sector + sector_i, page );
+                if(error)
+                    goto Error_3;
+                uint64_t *data = ( void * )sector;
+                switch( continue_from )
+                { case 0:
+                        char_i = 0;
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].uid = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 1:
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].parent = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 2:
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].block_table.start = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 3:
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].block_table.n = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 4:
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].size = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 5:
+                    {   char *data_c = ( void * )data;
+                        if( continue_from != 5 )
+                        {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data_c, GFP_KERNEL );
+                            if( !p )
+                            {   error = -ENOMEM;
+                                goto Error_3;
+                            }
+                            H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].name = p;
+                        }
+                        do
+                        {   H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].name[ char_i++ ] = *data_c;
+                            if( !*data_c )
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].name, char_i, GFP_KERNEL );
+                                if( !p )
+                                {   kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].name );
+                                    error = -ENOMEM;
+                                    goto Error_3;
+                                }
+                                break;
+                            }
+                        }while( ++data_c != sector + H_oux_E_fs_S_sector_size );
+                        if( data_c == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].lock_write = false;
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].lock_read = false;
+                        continue_from = 0;
+                    }
+                }
+                if( ++file_i == H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file_n )
+                    break;
             }
     }
-    
+    // Odczyt tablicy katalogów do pamięci operacyjnej.
+    for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory_n; )
+    {   unsigned continue_from = 0;
+        uint64_t char_i;
+        for( uint64_t directory_table_i = 0; directory_table_i != directory_table_n; directory_table_i++ )
+            for( uint64_t sector_i = 0; sector_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ directory_table_start + directory_table_i ].n; sector_i++ )
+            {   error = H_oux_E_fs_Q_device_I_read_sector( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table[ directory_table_start + directory_table_i ].sector + sector_i, page );
+                if(error)
+                    goto Error_3;
+                uint64_t *data = ( void * )sector;
+                switch( continue_from )
+                { case 0:
+                        char_i = 0;
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].uid = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 1:
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].parent = *data;
+                        continue_from++;
+                        if(( char * )++data == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                  case 2:
+                    {   char *data_c = ( void * )data;
+                        if( continue_from != 2 )
+                        {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data_c, GFP_KERNEL );
+                            if( !p )
+                            {   error = -ENOMEM;
+                                goto Error_3;
+                            }
+                            H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].name = p;
+                        }
+                        do
+                        {   H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].name[ char_i++ ] = *data_c;
+                            if( !*data_c )
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].name, char_i, GFP_KERNEL );
+                                if( !p )
+                                {   kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].name );
+                                    error = -ENOMEM;
+                                    goto Error_3;
+                                }
+                                break;
+                            }
+                        }while( ++data_c != sector + H_oux_E_fs_S_sector_size );
+                        if( data_c == sector + H_oux_E_fs_S_sector_size )
+                            continue;
+                        continue_from = 0;
+                    }
+                }
+                if( ++directory_i == H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file_n )
+                    break;
+            }
+    }
     free_page(( unsigned long )sector );
     return H_oux_E_fs_Q_device_S_n - 1;
-Error:
+Error_3:
+    kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory );
+Error_2:
+    kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file );
+Error_1:
+    kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table );
+Error_0:
     bdev_release( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].bdev_handle );
     if( device_i != H_oux_E_fs_Q_device_S_n - 1 )
         H_oux_E_fs_Q_device_S[ device_i ].bdev_handle = 0;
@@ -133,6 +279,14 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W, unsigned, device_i
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
     
+    // Wyrzucenie z pamięci operacyjne struktur systemu plików.
+    for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory_n; directory_i++ )
+        kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory[ directory_i ].name );
+    kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].directory );
+    for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file_n; file_i++ )
+        kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].name );
+    kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file );
+    kfree( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].block_table );
     bdev_release( H_oux_E_fs_Q_device_S[ device_i ].bdev_handle );
     if( device_i != H_oux_E_fs_Q_device_S_n - 1 )
         H_oux_E_fs_Q_device_S[ device_i ].bdev_handle = 0;
