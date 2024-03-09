@@ -36,6 +36,55 @@ H_oux_E_fs_W( void
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int
+H_oux_E_fs_Q_directory_R( unsigned device_i
+, uint64_t uid
+, uint64_t *directory_i
+){  uint64_t min = 0;
+    uint64_t max = H_oux_E_fs_Q_device_S[ device_i ].directory_n;
+    uint64_t directory_i_ = max / 2;
+    O{  if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i_ ].uid == uid )
+            break;
+        if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i_ ].uid > uid )
+        {   if( directory_i_ == min )
+                return -ENOENT;
+            max = directory_i_ - 1;
+            directory_i_ = max - ( directory_i_ - min ) / 2;
+        }else
+        {   if( directory_i_ == max )
+                return -ENOENT;
+            min = directory_i_ + 1;
+            directory_i_ = min + ( max - directory_i_ ) / 2;
+        }
+    }
+    *directory_i = directory_i;
+    return 0;
+}
+int
+H_oux_E_fs_Q_file_T( unsigned device_i
+, uint64_t uid
+, uint64_t *file_i
+){  uint64_t min = 0;
+    uint64_t max = H_oux_E_fs_Q_device_S[ device_i ].file_n;
+    uint64_t file_i_ = max / 2;
+    O{  if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].uid == uid )
+            break;
+        if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].uid > uid )
+        {   if( file_i_ == min )
+                return -ENOENT;
+            max = file_i_ - 1;
+            file_i_ = max - ( file_i_ - min ) / 2;
+        }else
+        {   if( file_i_ == max )
+                return -ENOENT;
+            min = file_i_ + 1;
+            file_i_ = min + ( max - file_i_ ) / 2;
+        }
+    }
+    *file_i = file_i_;
+    return 0;
+}
+//------------------------------------------------------------------------------
+int
 H_oux_E_fs_Q_device_I_read_sector( uint64_t sector
 , struct page *page
 ){  struct bio *bio = bio_alloc( H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].bdev_handle->bdev, 1, REQ_OP_READ, GFP_KERNEL );
@@ -188,6 +237,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M, char __user *, pathname
                         }while( ++data_c != sector + H_oux_E_fs_S_sector_size );
                         if( data_c == sector + H_oux_E_fs_S_sector_size )
                             continue;
+                        H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].lock_pid = ~0;
                         H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].lock_write = false;
                         H_oux_E_fs_Q_device_S[ H_oux_E_fs_Q_device_S_n - 1 ].file[ file_i ].lock_read = false;
                         continue_from = 0;
@@ -304,16 +354,133 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W, unsigned, device_i
     return 0;
 }
 //------------------------------------------------------------------------------
-SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock, unsigned, dev, uint64_t, uid, int, operation
-){  
+SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, uint64_t __user *, list
+){  if( device_i >= H_oux_E_fs_Q_device_S_n )
+        return -EINVAL;
+    uint64_t directory_i;
+    int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
+    if(error)
+        return error;
+    uint64_t *list_ = kmalloc_array( 0, sizeof( uint64_t ), GFP_KERNEL );
+    uint64_t n__ = 0;
+    for( directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
+        if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == uid )
+        {   void *p = krealloc_array( list_, n__ + 1, sizeof( uint64_t ), GFP_KERNEL );
+            if( !p )
+            {   kfree( list_ );
+                return -ENOMEM;
+            }
+            list_ = p;
+            n__++;
+            list_[ n__ - 1 ] = H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid;
+        }
+    uint64_t n_;
+    get_user( n_, n );
+    if( n_ >= n__ )
+        copy_to_user( list, list_, n__ * sizeof( uint64_t ));
+    kfree( list_ );
+    put_user( n__, n );
     return 0;
 }
-SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read, unsigned, dev, uint64_t, uid, uint64_t, sector, uint64_t, count, char __user *, data
-){  
+SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_R_name, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, char __user *, name
+){  if( device_i >= H_oux_E_fs_Q_device_S_n )
+        return -EINVAL;
+    uint64_t directory_i;
+    int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
+    if(error)
+        return error;
+    uint64_t n__ = strlen( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name ) + 1;
+    uint64_t n_;
+    get_user( n_, n );
+    if( n_ >= n__ )
+        copy_to_user( name, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, n__ );
+    put_user( n__, n );
     return 0;
 }
-SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write, unsigned, dev, uint64_t, uid, uint64_t, sector, uint64_t, count, const char __user *, data
-){  
+SYSCALL_DEFINE3( H_oux_E_fs_Q_file_R_name, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, char __user *, name
+){  if( device_i >= H_oux_E_fs_Q_device_S_n )
+        return -EINVAL;
+    uint64_t file_i;
+    int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
+    if(error)
+        return error;
+    uint64_t n__ = strlen( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name ) + 1;
+    uint64_t n_;
+    get_user( n_, n );
+    if( n_ >= n__ )
+        copy_to_user( name, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, n__ );
+    put_user( n__, n );
+    return 0;
+}
+//------------------------------------------------------------------------------
+SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock, unsigned, device_i, uint64_t, uid, int, operation
+){  if( device_i >= H_oux_E_fs_Q_device_S_n
+    || ( operation != LOCK_SH
+      && operation != LOCK_EX
+      && operation != LOCK_UN
+    ))
+    uint64_t file_i;
+    int error = H_oux_E_fs_Q_file_T( device_i, uid, &file_i );
+    if(error)
+        return error;
+    if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid
+    && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid != current->pid
+    )
+        return -EPERM;
+    if( operation == LOCK_SH )
+        H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = current->pid;
+    else if( operation == LOCK_EX )
+    {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = current->pid;
+        H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = true;
+    }else
+    {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
+        H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = false;
+    }
+    return 0;
+}
+SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read, unsigned, device_i, uint64_t, uid, uint64_t, sector, uint64_t __user *, n, char __user *, data
+){  if( device_i >= H_oux_E_fs_Q_device_S_n )
+        return -EINVAL;
+    uint64_t n_;
+    get_user( n_, n );
+    if( !n_ )
+        return -EINVAL;
+    uint64_t file_i;
+    int error = H_oux_E_fs_Q_file_T( device_i, uid, &file_i );
+    if(error)
+        return error;
+    if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid
+    && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid != current->pid
+    && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read
+    )
+        return -EPERM;
+    char *data_;
+    uint64_t n__;
+    
+    if( n_ >= n__ )
+        copy_to_user( data, data_, n__ );
+    put_user( n__, n );
+    return 0;
+}
+SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write, unsigned, device_i, uint64_t, uid, uint64_t, sector, uint64_t, n, const char __user *, data
+){  if( device_i >= H_oux_E_fs_Q_device_S_n
+    || !n
+    )
+        return -EINVAL;
+    uint64_t file_i;
+    int error = H_oux_E_fs_Q_file_T( device_i, uid, &file_i );
+    if(error)
+        return error;
+    if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid
+    && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid != current->pid
+    )
+        return -EPERM;
+    char *data_ = kmalloc( n, GFP_KERNEL );
+    if( !data_ )
+        return -ENOMEM;
+    copy_from_user( data_, data, n );
+    
+    kfree( data_ );
     return 0;
 }
 //==============================================================================

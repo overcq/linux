@@ -27,7 +27,7 @@ struct H_oux_E_fs_Z_file
   }block_table;
   uint64_t size;
   char *name;
-  unsigned lock_write   :1;
+  int lock_pid;
   unsigned lock_read    :1;
 };
 struct H_oux_E_fs_Z_directory
