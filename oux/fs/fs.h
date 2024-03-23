@@ -16,7 +16,7 @@
 struct __attribute__(( __packed__ )) H_oux_E_fs_Z_block
 { uint64_t sector;
   uint64_t n;
-  uint16_t pre, post;
+  uint16_t pre, post; //DFN Jeśli “n == 0”, to należy użyć “post”.
 };
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 struct H_oux_E_fs_Z_file
