@@ -21,7 +21,7 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t file_n;
   struct H_oux_E_fs_Z_directory *directory;
   uint64_t directory_n;
-  struct H_oux_E_fs_Z_free_block *free_table;
+  struct H_oux_E_fs_Z_block *free_table;
   uint64_t free_table_n;
 } *H_oux_E_fs_Q_device_S;
 unsigned H_oux_E_fs_Q_device_S_n;
@@ -556,8 +556,21 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M, char __user *, pathname
     }
     kfree(sector);
     // Utworzenie tablicy wolnych bloków.
+    p = kmalloc_array( 1, sizeof( *H_oux_E_fs_Q_device_S ), GFP_KERNEL );
+    if( !p )
+    {   error = -ENOMEM;
+        goto Error_4;
+    }
+    H_oux_E_fs_Q_device_S[ device_i ].free_table = p;
+    H_oux_E_fs_Q_device_S[ device_i ].free_table[0].sector = 0;
+    H_oux_E_fs_Q_device_S[ device_i ].free_table[0].n = i_size_read( file_inode( H_oux_E_fs_Q_device_S[ device_i ].bdev_file ));
+    H_oux_E_fs_Q_device_S[ device_i ].free_table[0].pre = 0;
+    H_oux_E_fs_Q_device_S[ device_i ].free_table[0].post = 0;
+    H_oux_E_fs_Q_device_S[ device_i ].free_table_n = 1;
     
     return device_i;
+Error_5:
+    kfree( H_oux_E_fs_Q_device_S[ device_i ].free_table );
 Error_4:
     kfree( H_oux_E_fs_Q_device_S[ device_i ].directory );
 Error_3:
