@@ -9,10 +9,23 @@
 #define H_oux_E_fs_Q_device_S_ident "OUXFS"
 #define H_oux_E_fs_S_sector_size    4096
 //==============================================================================
-struct __attribute__(( __packed__ )) H_oux_E_fs_Z_block
+enum H_oux_E_Fs_Z_block_Z_location
+{ H_oux_E_Fs_Z_block_Z_location_S_in_block
+, H_oux_E_Fs_Z_block_Z_location_S_in_sector
+};
+struct H_oux_E_fs_Z_block
 { uint64_t sector;
-  uint64_t n;
-  uint16_t pre, post; //DFN Jeśli “n == 0”, to należy użyć “post”.
+  union
+  { struct
+    { uint64_t n;
+      uint16_t pre, post;
+    }in_block;
+    struct
+    { uint16_t start;
+      uint16_t size;
+    }in_sector;
+  }location; //DFN Jeśli “in_block.n == 0”, to ustawić “in_sector”.
+  enum H_oux_E_Fs_Z_block_Z_location location_type;
 };
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 struct H_oux_E_fs_Z_file
