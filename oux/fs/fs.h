@@ -10,8 +10,8 @@
 #define H_oux_E_fs_S_sector_size    4096
 //==============================================================================
 enum H_oux_E_Fs_Z_block_Z_location
-{ H_oux_E_Fs_Z_block_Z_location_S_sectors
-, H_oux_E_Fs_Z_block_Z_location_S_in_sector
+{ H_oux_E_fs_Z_block_Z_location_S_sectors
+, H_oux_E_fs_Z_block_Z_location_S_in_sector
 };
 struct H_oux_E_fs_Z_block
 { uint64_t sector;
