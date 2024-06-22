@@ -6,6 +6,10 @@
 *         header
 * ©overcq                on ‟Gentoo Linux 17.1” “x86_64”             2024‒1‒29 L
 *******************************************************************************/
+//DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
+//DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
+//DFN Katalog główny w “parent” ma wartość “~0”.
+//==============================================================================
 #define H_oux_E_fs_Q_device_S_ident "OUXFS"
 #define H_oux_E_fs_S_sector_size    4096
 //==============================================================================
@@ -44,4 +48,22 @@ struct H_oux_E_fs_Z_directory
   uint64_t parent;
   char *name;
 };
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+struct H_oux_E_fs_Q_device_Z
+{ struct file *bdev_file;
+  struct H_oux_E_fs_Z_block *block_table;
+  uint64_t block_table_n;
+  uint64_t block_table_changed_from;
+  struct H_oux_E_fs_Z_file *file;
+  uint64_t file_n;
+  uint64_t file_changed_from;
+  struct H_oux_E_fs_Z_directory *directory;
+  uint64_t directory_n;
+  uint64_t directory_changed_from;
+  struct H_oux_E_fs_Z_block *free_table;
+  uint64_t free_table_n;
+};
+//==============================================================================
+int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
+int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 /******************************************************************************/
