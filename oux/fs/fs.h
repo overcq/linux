@@ -1,4 +1,4 @@
-/*******************************************************************************
+  /*******************************************************************************
 *   ___   public
 *  ¦OUX¦  C
 *  ¦/C+¦  Linux kernel subsystem
@@ -17,6 +17,12 @@ enum H_oux_E_Fs_Z_block_Z_location
 { H_oux_E_fs_Z_block_Z_location_S_sectors
 , H_oux_E_fs_Z_block_Z_location_S_in_sector
 };
+//DFN Wpis na dysku ma kolejność:
+// • sector
+// • location_type
+//   • n, pre, post
+// albo
+//   • start, size
 struct H_oux_E_fs_Z_block
 { uint64_t sector;
   union
@@ -54,12 +60,15 @@ struct H_oux_E_fs_Q_device_Z
   struct H_oux_E_fs_Z_block *block_table;
   uint64_t block_table_n;
   uint64_t block_table_changed_from;
+  uint64_t block_table_first_sector_size;
   struct H_oux_E_fs_Z_file *file;
   uint64_t file_n;
-  uint64_t file_changed_from;
+  uint64_t block_table_file_table_start, block_table_file_table_n;
+  uint64_t block_table_file_table_changed_from;
   struct H_oux_E_fs_Z_directory *directory;
   uint64_t directory_n;
-  uint64_t directory_changed_from;
+  uint64_t block_table_directory_table_start, block_table_directory_table_n;
+  uint64_t block_table_directory_table_changed_from;
   struct H_oux_E_fs_Z_block *free_table;
   uint64_t free_table_n;
 };

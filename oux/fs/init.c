@@ -31,6 +31,10 @@ H_oux_E_fs_W( void
 ){  kfree( H_oux_E_fs_Q_device_S );
 }
 //==============================================================================
+MODULE_DESCRIPTION( "OUX filesystem" );
+MODULE_AUTHOR( "Janusz Augustyński \'overcq\' <overcq@linux.pl>" );
+MODULE_LICENSE( "GPL" );
+//==============================================================================
 module_init( H_oux_E_fs_M )
 module_exit( H_oux_E_fs_W )
 /******************************************************************************/

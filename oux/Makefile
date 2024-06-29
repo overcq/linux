@@ -1,1 +1,1 @@
-obj-y += fs/
+obj-$(CONFIG_OUX_FS) += fs/
