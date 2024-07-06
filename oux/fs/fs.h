@@ -46,7 +46,7 @@ struct H_oux_E_fs_Z_file
     uint64_t n;
   }block_table;
   char *name;
-  int lock_pid;
+  int lock_pid; //DFN Jeśli różny od “~0”, to zablokowany do zapisu.
   unsigned lock_read    :1;
 };
 struct H_oux_E_fs_Z_directory

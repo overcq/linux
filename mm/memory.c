@@ -6011,7 +6011,7 @@ unlock:
 out:
 	return -EINVAL;
 }
-EXPORT_SYMBOL_GPL(follow_pte);
+EXPORT_SYMBOL(follow_pte);
 
 #ifdef CONFIG_HAVE_IOREMAP_PROT
 /**
