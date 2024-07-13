@@ -1,1 +1,2 @@
-obj-$(CONFIG_OUX_FS) += fs/
+obj-y += fs/
+ccflags-y += -fwrapv

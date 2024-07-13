@@ -429,3 +429,17 @@
 547	x32	pwritev2		compat_sys_pwritev64v2
 # This is the end of the legacy x32 range.  Numbers 548 and above are
 # not special and are not to be used for x32-specific syscalls.
+
+
+700	common	H_oux_E_fs_Q_device_M	sys_H_oux_E_fs_Q_device_M
+701	common	H_oux_E_fs_Q_device_W	sys_H_oux_E_fs_Q_device_W
+702	common	H_oux_E_fs_Q_directory_M	sys_H_oux_E_fs_Q_directory_M
+703	common	H_oux_E_fs_Q_directory_W	sys_H_oux_E_fs_Q_directory_W
+704	common	H_oux_E_fs_Q_file_W	sys_H_oux_E_fs_Q_file_W
+705	common	H_oux_E_fs_Q_file_M	sys_H_oux_E_fs_Q_file_M
+706	common	H_oux_E_fs_Q_directory_I_list	sys_H_oux_E_fs_Q_directory_I_list
+707	common	H_oux_E_fs_Q_directory_R_name	sys_H_oux_E_fs_Q_directory_R_name
+708 common  H_oux_E_fs_Q_file_R_name	sys_H_oux_E_fs_Q_file_R_name
+709	common	H_oux_E_fs_Q_file_I_lock	sys_H_oux_E_fs_Q_file_I_lock
+710	common	H_oux_E_fs_Q_file_I_read	sys_H_oux_E_fs_Q_file_I_read
+711	common	H_oux_E_fs_Q_file_I_write	sys_H_oux_E_fs_Q_file_I_write

@@ -1,6 +1,0 @@
-menu "OUX"
-
-config OUX_FS
-	tristate "OUX filesystem"
-
-endmenu

@@ -1295,4 +1295,19 @@ int __sys_getsockopt(int fd, int level, int optname, char __user *optval,
 		int __user *optlen);
 int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
 		int optlen);
+
+
+asmlinkage long sys_H_oux_E_fs_Q_device_M( const char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_device_W(unsigned);
+asmlinkage long sys_H_oux_E_fs_Q_directory_M( unsigned, uint64_t, const char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_directory_W( unsigned, uint64_t );
+asmlinkage long sys_H_oux_E_fs_Q_file_M( unsigned, uint64_t, const char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_file_W( unsigned, uint64_t );
+asmlinkage long sys_H_oux_E_fs_Q_directory_I_list( unsigned, uint64_t, uint64_t __user *, uint64_t __user * );
+asmlinkage long sys_H_oux_E_fs_Q_directory_R_name( unsigned, uint64_t, uint64_t __user *, char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_file_R_name( unsigned, uint64_t, uint64_t __user *, char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_file_I_lock( unsigned, uint64_t, int );
+asmlinkage long sys_H_oux_E_fs_Q_file_I_read( unsigned, uint64_t, uint64_t, uint64_t __user *, char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_file_I_write( unsigned, uint64_t, uint64_t, uint64_t, const char __user * );
+
 #endif

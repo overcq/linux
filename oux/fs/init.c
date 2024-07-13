@@ -13,6 +13,7 @@
 #include "../lang.h"
 #include "fs.h"
 //==============================================================================
+rwlock_t E_oux_E_fs_S_rw_lock;
 struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
@@ -20,7 +21,8 @@ static
 int
 __init
 H_oux_E_fs_M( void
-){  H_oux_E_fs_Q_device_S_n = 0;
+){  E_oux_E_fs_S_rw_lock = __RW_LOCK_UNLOCKED( E_oux_E_fs_S_rw_lock );
+    H_oux_E_fs_Q_device_S_n = 0;
     H_oux_E_fs_Q_device_S = kmalloc_array( H_oux_E_fs_Q_device_S_n, sizeof( *H_oux_E_fs_Q_device_S ), GFP_KERNEL );
     return H_oux_E_fs_Q_device_S ? 0 : -ENOMEM;
 }

@@ -895,3 +895,17 @@ __SYSCALL(__NR_mseal, sys_mseal)
 #define __NR_lstat64 __NR3264_lstat
 #endif
 #endif
+
+
+#define __NR_H_oux_E_fs_Q_device_M 700
+#define __NR_H_oux_E_fs_Q_device_W 701
+#define __NR_H_oux_E_fs_Q_directory_M 702
+#define __NR_H_oux_E_fs_Q_directory_W 703
+#define __NR_H_oux_E_fs_Q_file_M 704
+#define __NR_H_oux_E_fs_Q_file_W 705
+#define __NR_H_oux_E_fs_Q_directory_I_list 706
+#define __NR_H_oux_E_fs_Q_directory_R_name 707
+#define __NR_H_oux_E_fs_Q_file_R_name 708
+#define __NR_H_oux_E_fs_Q_file_I_lock 709
+#define __NR_H_oux_E_fs_Q_file_I_read 710
+#define __NR_H_oux_E_fs_Q_file_I_write 711
