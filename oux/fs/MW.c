@@ -40,32 +40,26 @@ extern unsigned H_oux_E_fs_Q_device_S_n;
     continue_from++
 //------------------------------------------------------------------------------
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M, const char __user *, pathname
-){  unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+){  write_lock( &E_oux_E_fs_S_rw_lock );
     char *pathname_ = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
     int error;
     long count = strncpy_from_user( pathname_, pathname, H_oux_E_fs_S_sector_size );
     if( count == -EFAULT )
     {   kfree( pathname_ );
-        pr_err( "H_oux_E_fs_Q_device_M: 1\n" );
         error = -EFAULT;
         goto Error_0;
     }
     if( count == H_oux_E_fs_S_sector_size )
     {   kfree( pathname_ );
-        pr_err( "H_oux_E_fs_Q_device_M: 2\n" );
         error = -ENAMETOOLONG;
         goto Error_0;
     }
-    pr_err( "H_oux_E_fs_Q_device_M: 3\n" );
     struct file *bdev_file = bdev_file_open_by_path( pathname_, BLK_OPEN_READ | BLK_OPEN_WRITE | BLK_OPEN_EXCL, 0, 0 );
     kfree( pathname_ );
-    pr_err( "H_oux_E_fs_Q_device_M: 4\n" );
-    if( !bdev_file )
-    {   error = -ENOENT;
+    if( IS_ERR( bdev_file ))
+    {   error = PTR_ERR( bdev_file );
         goto Error_0;
     }
-    pr_err( "H_oux_E_fs_Q_device_M: 5\n" );
     unsigned device_i;
     for( device_i = 0; device_i != H_oux_E_fs_Q_device_S_n; device_i++ )
         if( !H_oux_E_fs_Q_device_S[ device_i ].bdev_file )
@@ -2230,7 +2224,7 @@ Subtract_sectors:       if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block
     H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from = ~0;
     H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from = ~0;
     kfree(sector);
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return device_i;
 Error_6:
     kfree( H_oux_E_fs_Q_device_S[ device_i ].free_table );
@@ -2260,7 +2254,7 @@ Error_1:
         H_oux_E_fs_Q_device_S_n = device_i;
     }
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -2289,8 +2283,7 @@ Error_0:
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W, unsigned, device_i
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid )
@@ -3216,7 +3209,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W, unsigned, device_i
 Error_1:
     kfree(sector);
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 /******************************************************************************/

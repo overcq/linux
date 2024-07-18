@@ -25,8 +25,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock, unsigned, device_i, uint64_t, uid, in
       && operation != LOCK_UN
     ))
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t file_i;
     int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
@@ -47,7 +46,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock, unsigned, device_i, uint64_t, uid, in
         H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
     }
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -60,8 +59,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read, unsigned, device_i, uint64_t, uid, ui
     || !access_ok( data, n_ )
     )
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    read_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t file_i;
     int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
@@ -178,7 +176,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read, unsigned, device_i, uint64_t, uid, ui
 Error_1:
     kfree(sector);
 Error_0:
-    read_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write, unsigned, device_i, uint64_t, uid, uint64_t, pos, uint64_t, n, const char __user *, data
@@ -187,8 +185,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write, unsigned, device_i, uint64_t, uid, u
     || !access_ok( data, n )
     )
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t file_i;
     int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
@@ -331,7 +328,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write, unsigned, device_i, uint64_t, uid, u
 Error_1:
     kfree(sector);
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 /******************************************************************************/

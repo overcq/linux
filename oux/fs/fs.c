@@ -69,8 +69,7 @@ H_oux_E_fs_Q_file_R( unsigned device_i
 SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, uint64_t __user *, list
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    read_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t directory_i;
     int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
     if(error)
@@ -99,14 +98,13 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list, unsigned, device_i, uint64_t, ui
     kfree( list_ );
     put_user( n__, n );
 Error_0:
-    read_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, char __user *, name
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    read_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t directory_i;
     int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
     if(error)
@@ -121,14 +119,13 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name, unsigned, device_i, uint64_t, ui
         }
     put_user( n__, n );
 Error_0:
-    read_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, char __user *, name
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
-    unsigned long rw_lock_flags;
-    read_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t file_i;
     int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
@@ -143,13 +140,12 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name, unsigned, device_i, uint64_t, uid, ui
         }
     put_user( n__, n );
 Error_0:
-    read_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    read_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
 SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M, unsigned, device_i, uint64_t, parent, const char __user *, name
-){  unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+){  write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     if( !~H_oux_E_fs_Q_device_S[ device_i ].directory_n )
     {   error = -ENFILE;
@@ -203,12 +199,11 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M, unsigned, device_i, uint64_t, parent,
 Error_1:
     kfree( name_ );
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W, unsigned, device_i, uint64_t, uid
-){  unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+){  write_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t directory_i;
     int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
     if(error)
@@ -222,13 +217,12 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W, unsigned, device_i, uint64_t, uid
     }
     H_oux_E_fs_Q_device_S[ device_i ].directory = p;
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
 SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M, unsigned, device_i, uint64_t, parent, const char __user *, name
-){  unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+){  write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     if( !~H_oux_E_fs_Q_device_S[ device_i ].file_n )
     {   error = -ENFILE;
@@ -285,12 +279,11 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M, unsigned, device_i, uint64_t, parent, cons
 Error_1:
     kfree( name_ );
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W, unsigned, device_i, uint64_t, uid
-){  unsigned long rw_lock_flags;
-    write_lock_irqsave( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+){  write_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t file_i;
     int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
@@ -306,7 +299,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W, unsigned, device_i, uint64_t, uid
     }
     H_oux_E_fs_Q_device_S[ device_i ].file = p;
 Error_0:
-    write_unlock_irqrestore( &E_oux_E_fs_S_rw_lock, rw_lock_flags );
+    write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 /******************************************************************************/
