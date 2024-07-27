@@ -1,4 +1,4 @@
-  /*******************************************************************************
+/*******************************************************************************
 *   ___   public
 *  ¦OUX¦  C
 *  ¦/C+¦  Linux kernel subsystem
@@ -10,8 +10,10 @@
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
 //DFN Katalog główny w “parent” ma wartość “~0”.
 //==============================================================================
-#define H_oux_E_fs_Q_device_S_ident "OUXFS"
-#define H_oux_E_fs_S_sector_size    4096
+#define H_oux_E_fs_Q_device_S_ident     "OUXFS"
+#define H_oux_E_fs_S_sector_size        4096
+#undef pr_fmt
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 //==============================================================================
 enum H_oux_E_Fs_Z_block_Z_location
 { H_oux_E_fs_Z_block_Z_location_S_sectors
@@ -24,11 +26,11 @@ enum H_oux_E_Fs_Z_block_Z_location
 // albo
 //   • start, size
 struct H_oux_E_fs_Z_block
-{ uint64_t sector;
+{ uint64_t sector; // Klucz sortowania lokalnie rosnąco, a następnie kolejność w ‘sektorze’ rosnąco.
   union
   { struct
     { uint64_t n;
-      uint16_t pre, post;
+      uint16_t pre, post; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
     }sectors;
     struct
     { uint16_t start;
@@ -39,7 +41,7 @@ struct H_oux_E_fs_Z_block
 };
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 struct H_oux_E_fs_Z_file
-{ uint64_t uid;
+{ uint64_t uid; // Klucz sortowania rosnąco.
   uint64_t parent;
   struct
   { uint64_t start;
@@ -73,6 +75,7 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t free_table_n;
 };
 //==============================================================================
+uint64_t H_oux_E_fs_Q_block_R( unsigned, uint64_t, uint64_t );
 int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 /******************************************************************************/

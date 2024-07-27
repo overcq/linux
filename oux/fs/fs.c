@@ -17,6 +17,33 @@ extern rwlock_t E_oux_E_fs_S_rw_lock;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
+uint64_t
+H_oux_E_fs_Q_block_R( unsigned device_i
+, uint64_t file_i
+, uint64_t sector
+){  if( !H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+        return H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start;
+    uint64_t min = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start;
+    uint64_t max = min + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n - 1;
+    uint64_t block_table_i = max / 2;
+    O{  if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == sector )
+            break;
+        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector > sector )
+        {   if( block_table_i == min )
+                break;
+            max = block_table_i - 1;
+            block_table_i = max - ( block_table_i - min ) / 2;
+        }else
+        {   if( block_table_i == max )
+            {   block_table_i++;
+                break;
+            }
+            min = block_table_i + 1;
+            block_table_i = min + ( max - block_table_i ) / 2;
+        }
+    }
+    return block_table_i;
+}
 int
 H_oux_E_fs_Q_directory_R( unsigned device_i
 , uint64_t uid
@@ -66,7 +93,11 @@ H_oux_E_fs_Q_file_R( unsigned device_i
     return 0;
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, uint64_t __user *, list
+SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list
+, unsigned, device_i
+, uint64_t, uid
+, uint64_t __user *, n
+, uint64_t __user *, list
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
     read_lock( &E_oux_E_fs_S_rw_lock );
@@ -101,7 +132,11 @@ Error_0:
     read_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
-SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, char __user *, name
+SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name
+, unsigned, device_i
+, uint64_t, uid
+, uint64_t __user *, n
+, char __user *, name
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
     read_lock( &E_oux_E_fs_S_rw_lock );
@@ -122,7 +157,11 @@ Error_0:
     read_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
-SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name, unsigned, device_i, uint64_t, uid, uint64_t __user *, n, char __user *, name
+SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name
+, unsigned, device_i
+, uint64_t, uid
+, uint64_t __user *, n
+, char __user *, name
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
     read_lock( &E_oux_E_fs_S_rw_lock );
@@ -144,7 +183,10 @@ Error_0:
     return error;
 }
 //------------------------------------------------------------------------------
-SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M, unsigned, device_i, uint64_t, parent, const char __user *, name
+SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
+, unsigned, device_i
+, uint64_t, parent
+, const char __user *, name
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     if( !~H_oux_E_fs_Q_device_S[ device_i ].directory_n )
@@ -202,7 +244,9 @@ Error_0:
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
-SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W, unsigned, device_i, uint64_t, uid
+SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
+, unsigned, device_i
+, uint64_t, uid
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t directory_i;
     int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
@@ -221,7 +265,10 @@ Error_0:
     return error;
 }
 //------------------------------------------------------------------------------
-SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M, unsigned, device_i, uint64_t, parent, const char __user *, name
+SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M
+, unsigned, device_i
+, uint64_t, parent
+, const char __user *, name
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     if( !~H_oux_E_fs_Q_device_S[ device_i ].file_n )
@@ -272,7 +319,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M, unsigned, device_i, uint64_t, parent, cons
     H_oux_E_fs_Q_device_S[ device_i ].file_n++;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid = uid;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent = H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid;
-    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n = 0;
+    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n = 0;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name = name_;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
@@ -282,7 +329,9 @@ Error_0:
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
-SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W, unsigned, device_i, uint64_t, uid
+SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
+, unsigned, device_i
+, uint64_t, uid
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     uint64_t file_i;
     int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );

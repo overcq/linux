@@ -39,7 +39,8 @@ extern unsigned H_oux_E_fs_Q_device_S_n;
     } \
     continue_from++
 //------------------------------------------------------------------------------
-SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M, const char __user *, pathname
+SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
+, const char __user *, pathname
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     char *pathname_ = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
     int error;
@@ -2280,7 +2281,8 @@ Error_0:
     } \
     continue_from++
 //------------------------------------------------------------------------------
-SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W, unsigned, device_i
+SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
+, unsigned, device_i
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
     write_lock( &E_oux_E_fs_S_rw_lock );
