@@ -26,15 +26,15 @@ enum H_oux_E_Fs_Z_block_Z_location
 // albo
 //   • start, size
 struct H_oux_E_fs_Z_block
-{ uint64_t sector; // Klucz sortowania lokalnie rosnąco, a następnie kolejność w ‘sektorze’ rosnąco.
+{ uint64_t sector; // Klucz sortowania lokalnie (na liście bloków w pliku) rosnąco, a następnie kolejność w ‘sektorze’ rosnąco.
   union
   { struct
     { uint64_t n;
       uint16_t pre, post; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
     }sectors;
     struct
-    { uint16_t start;
-      uint16_t size;
+    { uint16_t start; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
+      uint16_t size; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
     }in_sector;
   }location; //DFN Jeśli “!sectors.n” oraz “!sectors.pre || !sectors.post”, to ustawić “in_sector”.
   enum H_oux_E_Fs_Z_block_Z_location location_type;
@@ -65,12 +65,12 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t block_table_first_sector_size;
   struct H_oux_E_fs_Z_file *file;
   uint64_t file_n;
+  uint64_t file_table_changed_from;
   uint64_t block_table_file_table_start, block_table_file_table_n;
-  uint64_t block_table_file_table_changed_from;
   struct H_oux_E_fs_Z_directory *directory;
   uint64_t directory_n;
+  uint64_t directory_table_changed_from;
   uint64_t block_table_directory_table_start, block_table_directory_table_n;
-  uint64_t block_table_directory_table_changed_from;
   struct H_oux_E_fs_Z_block *free_table;
   uint64_t free_table_n;
 };

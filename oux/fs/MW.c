@@ -191,8 +191,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
                 error = -EIO;
                 goto Error_5;
             }
-            block_table += sizeof( uint16_t );
-            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
+            if( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
             && ( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre
               || !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
             ))
@@ -200,10 +199,16 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
                 error = -EIO;
                 goto Error_5;
             }
+            block_table += sizeof( uint16_t );
         }else
         {   if( block_table + sizeof( uint16_t ) > sector + H_oux_E_fs_Q_device_S[ device_i ].block_table_first_sector_size )
                 break;
             H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start = *( uint16_t * )block_table;
+            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start >= H_oux_E_fs_S_sector_size )
+            {   pr_err( "H_oux_E_fs_Q_device_M: in_sector start not less than sector: block_table_i=%llu\n", block_table_i );
+                error = -EIO;
+                goto Error_5;
+            }
             block_table += sizeof( uint16_t );
             continue_from++;
             if( block_table + sizeof( uint16_t ) > sector + H_oux_E_fs_Q_device_S[ device_i ].block_table_first_sector_size )
@@ -211,6 +216,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
             H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size = *( uint16_t * )block_table;
             if( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size )
             {   pr_err( "H_oux_E_fs_Q_device_M: in_sector size 0: block_table_i=%llu\n", block_table_i );
+                error = -EIO;
+                goto Error_5;
+            }
+            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size >= H_oux_E_fs_S_sector_size )
+            {   pr_err( "H_oux_E_fs_Q_device_M: in_sector size not less than sector: block_table_i=%llu\n", block_table_i );
                 error = -EIO;
                 goto Error_5;
             }
@@ -2222,8 +2232,8 @@ Subtract_sectors:       if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block
         }
     }
     H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = ~0;
-    H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from = ~0;
-    H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from = ~0;
+    H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = ~0;
+    H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = ~0;
     kfree(sector);
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return device_i;
@@ -2730,9 +2740,9 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
             }
         }
     }
-    if( ~H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from )
+    if( ~H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from )
     {   unsigned continue_from = 0;
-        uint64_t file_i = 0;
+        uint64_t file_i = ~0;
         unsigned data_i = 0;
         unsigned char_i;
         for( uint64_t file_table_i = 0; file_table_i != H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_n; file_table_i++ )
@@ -2749,6 +2759,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                     do
                     {   switch( continue_from )
                         { case 0:
+                                file_i++;
                                 H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                                 , sector + H_oux_E_fs_S_sector_size
                                 );
@@ -2780,12 +2791,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                     continue_from = 0;
-                                    file_i++;
                                 }
                             }
                         }
                     }while(( char * )data < sector + H_oux_E_fs_S_sector_size );
-                    if( file_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from )
+                    if( file_i >= H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from )
                     {   offset = ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].sector - 1 ) * H_oux_E_fs_S_sector_size;
                         size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                         if( size != H_oux_E_fs_S_sector_size )
@@ -2800,6 +2810,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                     do
                     {   switch( continue_from )
                         { case 0:
+                                file_i++;
                                 H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                                 , sector + H_oux_E_fs_S_sector_size
                                 );
@@ -2832,12 +2843,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                     continue_from = 0;
-                                    file_i++;
                                 }
                             }
                         }
                     }while(( char * )data < sector + H_oux_E_fs_S_sector_size );
-                    if( file_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from )
+                    if( file_i >= H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from )
                     {   loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].sector + sector_i ) * H_oux_E_fs_S_sector_size;
                         ssize_t size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                         if( size != H_oux_E_fs_S_sector_size )
@@ -2861,6 +2871,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                     do
                     {   switch( continue_from )
                         { case 0:
+                                file_i++;
                                 H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                                 , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post
                                 );
@@ -2892,12 +2903,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                     continue_from = 0;
-                                    file_i++;
                                 }
                             }
                         }
                     }while(( char * )data < sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post );
-                    if( file_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from )
+                    if( file_i >= H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from )
                     {   offset = ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].sector
                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.n
                           ) * H_oux_E_fs_S_sector_size;
@@ -2921,6 +2931,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                 do
                 {   switch( continue_from )
                     { case 0:
+                            file_i++;
                             H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
                               + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.size
@@ -2960,7 +2971,6 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                 continue_from = 0;
-                                file_i++;
                             }
                         }
                     }
@@ -2968,7 +2978,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                   + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
                   + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.size
                 );
-                if( file_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_changed_from )
+                if( file_i >= H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from )
                 {   offset = H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].sector * H_oux_E_fs_S_sector_size;
                     size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size != H_oux_E_fs_S_sector_size )
@@ -2979,9 +2989,9 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                 }
             }
     }
-    if( ~H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from )
+    if( ~H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from )
     {   unsigned continue_from = 0;
-        uint64_t directory_i = 0;
+        uint64_t directory_i = ~0;
         unsigned data_i = 0;
         unsigned char_i;
         for( uint64_t directory_table_i = 0; directory_table_i != H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_n; directory_table_i++ )
@@ -2998,6 +3008,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                     do
                     {   switch( continue_from )
                         { case 0:
+                                directory_i++;
                                 H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                                 , sector + H_oux_E_fs_S_sector_size
                                 );
@@ -3019,12 +3030,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                 else
                                 {   data = ( void * )( data_c + 1 );
                                     continue_from = 0;
-                                    directory_i++;
                                 }
                             }
                         }
                     }while(( char * )data < sector + H_oux_E_fs_S_sector_size );
-                    if( directory_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from )
+                    if( directory_i >= H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from )
                     {   offset = ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].sector - 1 ) * H_oux_E_fs_S_sector_size;
                         size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                         if( size != H_oux_E_fs_S_sector_size )
@@ -3039,6 +3049,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                     do
                     {   switch( continue_from )
                         { case 0:
+                                directory_i++;
                                 H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                                 , sector + H_oux_E_fs_S_sector_size
                                 );
@@ -3060,12 +3071,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                 else
                                 {   data = ( void * )( data_c + 1 );
                                     continue_from = 0;
-                                    directory_i++;
                                 }
                             }
                         }
                     }while(( char * )data < sector + H_oux_E_fs_S_sector_size );
-                    if( directory_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from )
+                    if( directory_i >= H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from )
                     {   loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].sector + sector_i ) * H_oux_E_fs_S_sector_size;
                         ssize_t size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                         if( size != H_oux_E_fs_S_sector_size )
@@ -3089,6 +3099,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                     do
                     {   switch( continue_from )
                         { case 0:
+                                directory_i++;
                                 H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                                 , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.sectors.post
                                 );
@@ -3110,12 +3121,11 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                                 else
                                 {   data = ( void * )( data_c + 1 );
                                     continue_from = 0;
-                                    directory_i++;
                                 }
                             }
                         }
                     }while(( char * )data < sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.sectors.post );
-                    if( directory_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from )
+                    if( directory_i >= H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from )
                     {   offset = ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].sector
                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.sectors.n
                           ) * H_oux_E_fs_S_sector_size;
@@ -3139,6 +3149,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                 do
                 {   switch( continue_from )
                     { case 0:
+                            directory_i++;
                             H_oux_E_fs_Q_device_I_switch_item( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start
                               + directory_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.size
@@ -3165,7 +3176,6 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                             else
                             {   data = ( void * )( data_c + 1 );
                                 continue_from = 0;
-                                directory_i++;
                             }
                         }
                     }
@@ -3173,7 +3183,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
                   + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.start
                   + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.size
                 );
-                if( directory_table_i >= H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_changed_from )
+                if( directory_i >= H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from )
                 {   offset = H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].sector * H_oux_E_fs_S_sector_size;
                     size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size != H_oux_E_fs_S_sector_size )

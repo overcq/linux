@@ -35,7 +35,7 @@ H_oux_E_fs_Q_block_R( unsigned device_i
             block_table_i = max - ( block_table_i - min ) / 2;
         }else
         {   if( block_table_i == max )
-            {   block_table_i++;
+            {   block_table_i++; // Przesuń na “H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector > sector” lub poza zakres podtablicy.
                 break;
             }
             min = block_table_i + 1;
