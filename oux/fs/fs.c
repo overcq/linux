@@ -35,7 +35,7 @@ H_oux_E_fs_Q_block_R( unsigned device_i
             block_table_i = max - ( block_table_i - min ) / 2;
         }else
         {   if( block_table_i == max )
-            {   block_table_i++; // Przesuń na “H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector > sector” lub poza zakres podtablicy.
+            {   block_table_i++; // Przesuń na “H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector > sector” lub poza zakres podtablicy bloków.
                 break;
             }
             min = block_table_i + 1;
@@ -209,6 +209,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
         goto Error_1;
     }
     name_ = p;
+    //TODO Powiększyć listę bloków przydzielonych na tablicę katalogów.
+    
     uint64_t uid;
     uint64_t directory_i;
     if( H_oux_E_fs_Q_device_S[ device_i ].directory_n )
@@ -291,6 +293,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M
         goto Error_1;
     }
     name_ = p;
+    //TODO Powiększyć listę bloków przydzielonych na tablicę plików.
+    
     uint64_t uid;
     uint64_t file_i;
     if( H_oux_E_fs_Q_device_S[ device_i ].file_n )

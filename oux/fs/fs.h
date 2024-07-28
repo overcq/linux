@@ -62,7 +62,6 @@ struct H_oux_E_fs_Q_device_Z
   struct H_oux_E_fs_Z_block *block_table;
   uint64_t block_table_n;
   uint64_t block_table_changed_from;
-  uint64_t block_table_first_sector_size;
   struct H_oux_E_fs_Z_file *file;
   uint64_t file_n;
   uint64_t file_table_changed_from;
