@@ -18,6 +18,70 @@ extern rwlock_t E_oux_E_fs_S_rw_lock;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
+static
+bool
+H_oux_E_fs_Q_file_T_blocks_sorted( unsigned device_i
+, uint64_t file_i
+){  if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+    {   uint64_t sector_prev = H_oux_E_fs_Q_device_S[ device_i ].block_table[0].sector;
+        for( uint64_t block_table_i = 1; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n; block_table_i++ )
+        {   uint64_t sector = H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].sector;
+            if( sector < sector_prev )
+            {   pr_err( "H_oux_E_fs_Q_device_M: blocks not sorted: file_i=%llu\n", file_i );
+                return no;
+            }
+            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                {   uint64_t sector_end = sector_prev + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.sectors.n;
+                    if( sector_end > sector
+                      || ( sector_end == sector
+                        && ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.sectors.post
+                          || H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].location.sectors.pre
+                      ))
+                      || ( sector_end == sector - 1
+                        && H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.sectors.post
+                          + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].location.sectors.pre
+                          >= H_oux_E_fs_S_sector_size
+                    ))
+                    {   pr_err( "H_oux_E_fs_Q_device_M: blocks intersecting or adjacent: file_i=%llu\n", file_i );
+                        return no;
+                    }
+                }else
+                {   uint64_t end_prev = H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.in_sector.start
+                      + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.in_sector.size;
+                    if( sector_prev == sector - 1
+                    && end_prev + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].location.sectors.pre >= H_oux_E_fs_S_sector_size
+                    )
+                    {   pr_err( "H_oux_E_fs_Q_device_M: blocks intersecting or adjacent: file_i=%llu\n", file_i );
+                        return no;
+                    }
+                }
+            else
+                if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                {   uint64_t sector_end = sector_prev + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.sectors.n;
+                    if( sector_end == sector
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.sectors.post
+                      >= H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].location.in_sector.start
+                    )
+                    {   pr_err( "H_oux_E_fs_Q_device_M: blocks intersecting or adjacent: file_i=%llu\n", file_i );
+                        return no;
+                    }
+                }else
+                {   uint64_t end_prev = H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.in_sector.start
+                      + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i - 1 ].location.in_sector.size;
+                    if( sector_prev == sector - 1
+                    && end_prev == H_oux_E_fs_S_sector_size
+                    && !H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ].location.in_sector.start
+                    )
+                    {   pr_err( "H_oux_E_fs_Q_device_M: blocks adjacent: file_i=%llu\n", file_i );
+                        return no;
+                    }
+                }
+            sector_prev = sector;
+        }
+    }
+    return yes;
+}
 #define H_oux_E_fs_Q_device_I_switch_item( type, item, end ) \
     if( data_i ) \
     {   do \
@@ -212,7 +276,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
                             }
                             if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
                               + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
-                              > H_oux_E_fs_S_sector_size
+                              >= H_oux_E_fs_S_sector_size
                             )
                             {   pr_err( "H_oux_E_fs_Q_device_M: in_sector not less than sector: block_table_i=%llu\n", block_table_i );
                                 error = -EIO;
@@ -315,7 +379,7 @@ End_loop:;
                                         }
                                         if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
                                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
-                                          > H_oux_E_fs_S_sector_size
+                                          >= H_oux_E_fs_S_sector_size
                                         )
                                         {   pr_err( "H_oux_E_fs_Q_device_M: in_sector end not less than sector: block_table_i=%llu\n", block_table_i );
                                             error = -EIO;
@@ -410,7 +474,7 @@ End_loop:;
                                         }
                                         if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
                                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
-                                          > H_oux_E_fs_S_sector_size
+                                          >= H_oux_E_fs_S_sector_size
                                         )
                                         {   pr_err( "H_oux_E_fs_Q_device_M: in_sector not less than sector: block_table_i=%llu\n", block_table_i );
                                             error = -EIO;
@@ -506,7 +570,7 @@ End_loop:;
                                         }
                                         if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
                                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
-                                          > H_oux_E_fs_S_sector_size
+                                          >= H_oux_E_fs_S_sector_size
                                         )
                                         {   pr_err( "H_oux_E_fs_Q_device_M: in_sector not less than sector: block_table_i=%llu\n", block_table_i );
                                             error = -EIO;
@@ -616,7 +680,7 @@ End_loop:;
                                     }
                                     if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
                                       + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
-                                      > H_oux_E_fs_S_sector_size
+                                      >= H_oux_E_fs_S_sector_size
                                     )
                                     {   pr_err( "H_oux_E_fs_Q_device_M: in_sector not less than sector: block_table_i=%llu\n", block_table_i );
                                         error = -EIO;
@@ -634,9 +698,8 @@ End_loop:;
         goto Error_5;
     }
     // Odczyt tablicy plików do pamięci operacyjnej.
-    //TODO Sprawdzić przy wczytywaniu plików, czy sektory lokalnie są posortowane.
     uint64_t uid_last = ~0;
-    uint64_t file_i = 0;
+    uint64_t file_i = ~0;
     data_i = 0;
     unsigned char_i;
     if( !H_oux_E_fs_Q_device_S[ device_i ].file_n
@@ -660,10 +723,21 @@ End_loop:;
                 do
                 {   switch( continue_from )
                     { case 0:
+                            file_i++;
+                            if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                             , sector + H_oux_E_fs_S_sector_size
                             );
                       case 1:
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( ~uid_last
                             && uid_last >= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                             )
@@ -683,6 +757,10 @@ End_loop:;
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , sector + H_oux_E_fs_S_sector_size
                             );
+                            if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
+                            {   error = -EIO;
+                                goto Error_5;
+                            }
                       case 4:
                         {   if( continue_from != 4 )
                             {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, GFP_KERNEL );
@@ -718,12 +796,6 @@ End_loop:;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                 continue_from = 0;
-                                file_i++;
-                                if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
-                                {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
-                                    error = -EIO;
-                                    goto Error_5;
-                                }
                             }
                         }
                     }
@@ -741,10 +813,21 @@ End_loop:;
                 do
                 {   switch( continue_from )
                     { case 0:
+                            file_i++;
+                            if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                             , sector + H_oux_E_fs_S_sector_size
                             );
                       case 1:
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( ~uid_last
                             && uid_last >= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                             )
@@ -764,6 +847,10 @@ End_loop:;
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , sector + H_oux_E_fs_S_sector_size
                             );
+                            if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
+                            {   error = -EIO;
+                                goto Error_5;
+                            }
                       case 4:
                         {   if( continue_from != 4 )
                             {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, GFP_KERNEL );
@@ -799,12 +886,6 @@ End_loop:;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                 continue_from = 0;
-                                file_i++;
-                                if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
-                                {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
-                                    error = -EIO;
-                                    goto Error_5;
-                                }
                             }
                         }
                     }
@@ -824,10 +905,21 @@ End_loop:;
                 do
                 {   switch( continue_from )
                     { case 0:
+                            file_i++;
+                            if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post
                             );
                       case 1:
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( uid_last >= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid )
                             {   pr_err( "H_oux_E_fs_Q_device_M: uid not sorted or duplicate: file_i=%llu\n", file_i );
                                 error = -EIO;
@@ -845,6 +937,10 @@ End_loop:;
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post
                             );
+                            if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
+                            {   error = -EIO;
+                                goto Error_5;
+                            }
                       case 4:
                         {   if( continue_from != 4 )
                             {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post - data, GFP_KERNEL );
@@ -880,12 +976,6 @@ End_loop:;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                                 H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                                 continue_from = 0;
-                                file_i++;
-                                if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
-                                {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
-                                    error = -EIO;
-                                    goto Error_5;
-                                }
                             }
                         }
                     }
@@ -903,11 +993,22 @@ End_loop:;
             do
             {   switch( continue_from )
                 { case 0:
+                        file_i++;
+                        if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
+                        {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
+                            error = -EIO;
+                            goto Error_5;
+                        }
                         H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                         , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.size
                         );
                   case 1:
+                        if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid )
+                        {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: file_i=%llu\n", file_i );
+                            error = -EIO;
+                            goto Error_5;
+                        }
                         if( ~uid_last
                         && uid_last >= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid
                         )
@@ -930,6 +1031,10 @@ End_loop:;
                         , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.size
                         );
+                        if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
+                        {   error = -EIO;
+                            goto Error_5;
+                        }
                   case 4:
                     {   if( continue_from != 4 )
                         {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
@@ -976,12 +1081,6 @@ End_loop:;
                             H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;
                             H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
                             continue_from = 0;
-                            file_i++;
-                            if( file_i == H_oux_E_fs_Q_device_S[ device_i ].file_n )
-                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i );
-                                error = -EIO;
-                                goto Error_5;
-                            }
                         }
                     }
                 }
@@ -1003,7 +1102,7 @@ End_loop:;
         goto Error_5;
     }
     uid_last = ~0;
-    uint64_t directory_i = 0;
+    uint64_t directory_i = ~0;
     data_i = 0;
     for( uint64_t directory_table_i = 0; directory_table_i != H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_n; directory_table_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
@@ -1019,10 +1118,21 @@ End_loop:;
                 do
                 {   switch( continue_from )
                     { case 0:
+                            directory_i++;
+                            if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                             , sector + H_oux_E_fs_S_sector_size
                             );
                       case 1:
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: directory_i=%llu\n", directory_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( ~uid_last
                             && uid_last >= H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                             )
@@ -1067,12 +1177,6 @@ End_loop:;
                             }else
                             {   data++;
                                 continue_from = 0;
-                                directory_i++;
-                                if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
-                                {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
-                                    error = -EIO;
-                                    goto Error_5;
-                                }
                             }
                         }
                     }
@@ -1090,10 +1194,21 @@ End_loop:;
                 do
                 {   switch( continue_from )
                     { case 0:
+                            directory_i++;
+                            if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                             , sector + H_oux_E_fs_S_sector_size
                             );
                       case 1:
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: directory_i=%llu\n", directory_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( ~uid_last
                             && uid_last >= H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                             )
@@ -1138,12 +1253,6 @@ End_loop:;
                             }else
                             {   data++;
                                 continue_from = 0;
-                                directory_i++;
-                                if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
-                                {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
-                                    error = -EIO;
-                                    goto Error_5;
-                                }
                             }
                         }
                     }
@@ -1162,10 +1271,21 @@ End_loop:;
                 do
                 {   switch( continue_from )
                     { case 0:
+                            directory_i++;
+                            if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.sectors.post
                             );
                       case 1:
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: directory_i=%llu\n", directory_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( uid_last >= H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid )
                             {   pr_err( "H_oux_E_fs_Q_device_M: uid not sorted or duplicate: directory_i=%llu\n", directory_i );
                                 error = -EIO;
@@ -1208,12 +1328,6 @@ End_loop:;
                             }else
                             {   data++;
                                 continue_from = 0;
-                                directory_i++;
-                                if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
-                                {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
-                                    error = -EIO;
-                                    goto Error_5;
-                                }
                             }
                         }
                     }
@@ -1231,11 +1345,22 @@ End_loop:;
             do
             {   switch( continue_from )
                 { case 0:
+                        directory_i++;
+                        if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
+                        {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
+                            error = -EIO;
+                            goto Error_5;
+                        }
                         H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                         , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.start
                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.size
                         );
                   case 1:
+                        if( !~H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid )
+                        {   pr_err( "H_oux_E_fs_Q_device_M: uid empty: directory_i=%llu\n", directory_i );
+                            error = -EIO;
+                            goto Error_5;
+                        }
                         if( ~uid_last
                         && uid_last >= H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid
                         )
@@ -1284,12 +1409,6 @@ End_loop:;
                         }else
                         {   data++;
                             continue_from = 0;
-                            directory_i++;
-                            if( directory_i == H_oux_E_fs_Q_device_S[ device_i ].directory_n )
-                            {   pr_err( "H_oux_E_fs_Q_device_M: too much blocks size: block_table_i=%llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i );
-                                error = -EIO;
-                                goto Error_5;
-                            }
                         }
                     }
                 }

@@ -41,7 +41,7 @@ struct H_oux_E_fs_Z_block
 };
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 struct H_oux_E_fs_Z_file
-{ uint64_t uid; // Klucz sortowania rosnąco.
+{ uint64_t uid; // Wartości oprócz “~0”. Klucz sortowania rosnąco.
   uint64_t parent;
   struct
   { uint64_t start;
@@ -52,7 +52,7 @@ struct H_oux_E_fs_Z_file
   unsigned lock_read    :1;
 };
 struct H_oux_E_fs_Z_directory
-{ uint64_t uid;
+{ uint64_t uid; // Wartości oprócz “~0”. Klucz sortowania rosnąco.
   uint64_t parent;
   char *name;
 };
