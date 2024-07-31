@@ -192,7 +192,7 @@ Error_0:
 }
 static
 int
-H_oux_E_fs_Z_block_I_unite( unsigned device_i
+H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
 , uint64_t file_i
 , uint64_t free_table_found_i
 , uint64_t size_left
@@ -224,8 +224,8 @@ H_oux_E_fs_Z_block_I_unite( unsigned device_i
         }
     }else
         block.location.in_sector.size -= size_left;
-    uint64_t block_table_i = H_oux_E_fs_Q_block_R( device_i, file_i, block.sector );
-    bool realloc_add, realloc_subtract;
+    uint64_t block_table_i = H_oux_E_fs_Q_block_table_R( device_i, file_i, block.sector );
+    bool realloc_subtract, realloc_add;
     if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
     {   uint64_t upper_block_table_i = ~0;
         if( free_table_found_fit )
@@ -645,7 +645,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             }
         }
         if( ~lowest_size )
-        {   error = H_oux_E_fs_Z_block_I_unite( device_i, file_i, free_table_found_i, lowest_size - size );
+        {   error = H_oux_E_fs_Q_block_table_I_unite( device_i, file_i, free_table_found_i, lowest_size - size );
             if(error)
                 goto Error_1;
             if( lowest_size != size )
@@ -742,7 +742,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                         data_p += n__;
                         n -= n__;
                         if( !n )
-                        {   error = H_oux_E_fs_Z_block_I_unite( device_i, file_i, free_table_found_i, size - n__ );
+                        {   error = H_oux_E_fs_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size - n__ );
                             if(error)
                                 goto Error_1;
                             H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre -= n__;
@@ -786,7 +786,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                                 + sector_i * H_oux_E_fs_S_sector_size
                                 + n__
                                 );
-                            error = H_oux_E_fs_Z_block_I_unite( device_i, file_i, free_table_found_i, size_left );
+                            error = H_oux_E_fs_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size_left );
                             if(error)
                                 goto Error_1;
                             H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n -= sector_i + 1;
@@ -824,7 +824,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                         n -= n__;
                         if( !n )
                         {   uint64_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
-                            error = H_oux_E_fs_Z_block_I_unite( device_i, file_i, free_table_found_i, post - n__ );
+                            error = H_oux_E_fs_Q_block_table_I_unite( device_i, file_i, free_table_found_i, post - n__ );
                             if(error)
                                 goto Error_1;
                             if( post != n__ )
@@ -857,7 +857,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     data_p += n__;
                     n -= n__;
                     if( !n )
-                    {   error = H_oux_E_fs_Z_block_I_unite( device_i, file_i, free_table_found_i, size - n__ );
+                    {   error = H_oux_E_fs_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size - n__ );
                         if(error)
                             goto Error_1;
                         if( size != n__ )
