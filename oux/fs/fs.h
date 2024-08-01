@@ -26,7 +26,7 @@ enum H_oux_E_Fs_Z_block_Z_location
 // albo
 //   • start, size
 struct H_oux_E_fs_Z_block
-{ uint64_t sector; // Klucz sortowania lokalnie (na liście bloków w pliku) rosnąco, a następnie kolejność w ‘sektorze’ rosnąco.
+{ uint64_t sector;
   union
   { struct
     { uint64_t n;
@@ -74,7 +74,6 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t free_table_n;
 };
 //==============================================================================
-uint64_t H_oux_E_fs_Q_block_table_R( unsigned, uint64_t, uint64_t );
 uint64_t H_oux_E_fs_Q_free_table_R( unsigned, uint64_t, uint64_t );
 int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );

@@ -14,6 +14,7 @@
 #include "../lang.h"
 #include "fs.h"
 //==============================================================================
+extern const gfp_t E_oux_E_fs_S_kmalloc_flags;
 extern rwlock_t E_oux_E_fs_S_rw_lock;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
@@ -104,7 +105,7 @@ H_oux_E_fs_Q_file_T_blocks_sorted( unsigned device_i
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
 , const char __user *, pathname
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
-    char *pathname_ = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
+    char *pathname_ = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
     int error;
     long count = strncpy_from_user( pathname_, pathname, H_oux_E_fs_S_sector_size );
     if( count == -EFAULT )
@@ -128,7 +129,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
         if( !H_oux_E_fs_Q_device_S[ device_i ].bdev_file )
             break;
     if( device_i == H_oux_E_fs_Q_device_S_n )
-    {   void *p = krealloc_array( H_oux_E_fs_Q_device_S, H_oux_E_fs_Q_device_S_n + 1, sizeof( *H_oux_E_fs_Q_device_S ), GFP_KERNEL );
+    {   void *p = krealloc_array( H_oux_E_fs_Q_device_S, H_oux_E_fs_Q_device_S_n + 1, sizeof( *H_oux_E_fs_Q_device_S ), E_oux_E_fs_S_kmalloc_flags );
         if( !p )
         {   error = -ENOMEM;
             goto Error_0;
@@ -137,7 +138,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
         H_oux_E_fs_Q_device_S_n++;
     }
     H_oux_E_fs_Q_device_S[ device_i ].bdev_file = bdev_file;
-    char *sector = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
+    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
     if( !sector )
     {   error = -ENOMEM;
         goto Error_1;
@@ -149,7 +150,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
         error = -EIO;
         goto Error_2;
     }
-    if( strncmp( sector, H_oux_E_fs_Q_device_S_ident, sizeof( H_oux_E_fs_Q_device_S_ident )))
+    if( strncmp( sector, H_oux_E_fs_Q_device_S_ident, sizeof( H_oux_E_fs_Q_device_S_ident ) - 1 ))
     {   pr_err( "H_oux_E_fs_Q_device_M: no filesystem identification string\n" );
         error = -EIO;
         goto Error_2;
@@ -181,19 +182,19 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
         goto Error_2;
     }
     char *data = ( void * )&block_table_n[7];
-    void *p = kmalloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), GFP_KERNEL );
+    void *p = kmalloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_2;
     }
     H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
-    p = kmalloc_array( H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), GFP_KERNEL );
+    p = kmalloc_array( H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_3;
     }
     H_oux_E_fs_Q_device_S[ device_i ].file = p;
-    p = kmalloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), GFP_KERNEL );
+    p = kmalloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_4;
@@ -753,17 +754,27 @@ End_loop:;
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                             , sector + H_oux_E_fs_S_sector_size
                             );
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: block start empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                       case 3:
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , sector + H_oux_E_fs_S_sector_size
                             );
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: block count empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
                             {   error = -EIO;
                                 goto Error_5;
                             }
                       case 4:
                         {   if( continue_from != 4 )
-                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, GFP_KERNEL );
+                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_5;
@@ -774,7 +785,7 @@ End_loop:;
                             do
                             {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name[ char_i++ ] = *data;
                                 if( !*data )
-                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, GFP_KERNEL );
+                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                         error = -ENOMEM;
@@ -784,7 +795,7 @@ End_loop:;
                                 }
                             }while( ++data != sector + H_oux_E_fs_S_sector_size );
                             if( data == sector + H_oux_E_fs_S_sector_size )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                     error = -ENOMEM;
@@ -843,17 +854,27 @@ End_loop:;
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                             , sector + H_oux_E_fs_S_sector_size
                             );
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: block start empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                       case 3:
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , sector + H_oux_E_fs_S_sector_size
                             );
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: block count empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
                             {   error = -EIO;
                                 goto Error_5;
                             }
                       case 4:
                         {   if( continue_from != 4 )
-                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, GFP_KERNEL );
+                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_5;
@@ -864,7 +885,7 @@ End_loop:;
                             do
                             {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name[ char_i++ ] = *data;
                                 if( !*data )
-                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, GFP_KERNEL );
+                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                         error = -ENOMEM;
@@ -874,7 +895,7 @@ End_loop:;
                                 }
                             }while( ++data != sector + H_oux_E_fs_S_sector_size );
                             if( data == sector + H_oux_E_fs_S_sector_size )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                     error = -ENOMEM;
@@ -933,17 +954,27 @@ End_loop:;
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post
                             );
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: block start empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                       case 3:
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post
                             );
+                            if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+                            {   pr_err( "H_oux_E_fs_Q_device_M: block count empty: file_i=%llu\n", file_i );
+                                error = -EIO;
+                                goto Error_5;
+                            }
                             if( !H_oux_E_fs_Q_file_T_blocks_sorted( device_i, file_i ))
                             {   error = -EIO;
                                 goto Error_5;
                             }
                       case 4:
                         {   if( continue_from != 4 )
-                            {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post - data, GFP_KERNEL );
+                            {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post - data, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_5;
@@ -954,7 +985,7 @@ End_loop:;
                             do
                             {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name[ char_i++ ] = *data;
                                 if( !*data )
-                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, GFP_KERNEL );
+                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                         error = -ENOMEM;
@@ -964,7 +995,7 @@ End_loop:;
                                 }
                             }while( ++data != sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post );
                             if( data == sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                     error = -ENOMEM;
@@ -1039,7 +1070,7 @@ End_loop:;
                     {   if( continue_from != 4 )
                         {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
                               + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.size - data
-                            , GFP_KERNEL
+                            , E_oux_E_fs_S_kmalloc_flags
                             );
                             if( !p )
                             {   error = -ENOMEM;
@@ -1051,7 +1082,7 @@ End_loop:;
                         do
                         {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name[ char_i++ ] = *data;
                             if( !*data )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
                                     error = -ENOMEM;
@@ -1068,7 +1099,7 @@ End_loop:;
                         {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name
                             , char_i + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.start
                               + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.in_sector.size
-                            , GFP_KERNEL
+                            , E_oux_E_fs_S_kmalloc_flags
                             );
                             if( !p )
                             {   kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
@@ -1146,7 +1177,7 @@ End_loop:;
                             );
                       case 2:
                         {   if( continue_from != 2 )
-                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, GFP_KERNEL );
+                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_5;
@@ -1157,7 +1188,7 @@ End_loop:;
                             do
                             {   H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name[ char_i++ ] = *data;
                                 if( !*data )
-                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, GFP_KERNEL );
+                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                         error = -ENOMEM;
@@ -1167,7 +1198,7 @@ End_loop:;
                                 }
                             }while( ++data != sector + H_oux_E_fs_S_sector_size );
                             if( data == sector + H_oux_E_fs_S_sector_size )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                     error = -ENOMEM;
@@ -1222,7 +1253,7 @@ End_loop:;
                             );
                       case 2:
                         {   if( continue_from != 2 )
-                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, GFP_KERNEL );
+                            {   p = kmalloc( sector + H_oux_E_fs_S_sector_size - data, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_5;
@@ -1233,7 +1264,7 @@ End_loop:;
                             do
                             {   H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name[ char_i++ ] = *data;
                                 if( !*data )
-                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, GFP_KERNEL );
+                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                         error = -ENOMEM;
@@ -1243,7 +1274,7 @@ End_loop:;
                                 }
                             }while( ++data != sector + H_oux_E_fs_S_sector_size );
                             if( data == sector + H_oux_E_fs_S_sector_size )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                     error = -ENOMEM;
@@ -1297,7 +1328,7 @@ End_loop:;
                             );
                       case 2:
                         {   if( continue_from != 2 )
-                            {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.sectors.post - data, GFP_KERNEL );
+                            {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.sectors.post - data, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_5;
@@ -1308,7 +1339,7 @@ End_loop:;
                             do
                             {   H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name[ char_i++ ] = *data;
                                 if( !*data )
-                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, GFP_KERNEL );
+                                {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                         error = -ENOMEM;
@@ -1318,7 +1349,7 @@ End_loop:;
                                 }
                             }while( ++data != sector + H_oux_E_fs_S_sector_size );
                             if( data == sector + H_oux_E_fs_S_sector_size )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                     error = -ENOMEM;
@@ -1374,7 +1405,7 @@ End_loop:;
                         );
                   case 2:
                     {   if( continue_from != 2 )
-                        {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.size - data, GFP_KERNEL );
+                        {   p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.size - data, E_oux_E_fs_S_kmalloc_flags );
                             if( !p )
                             {   error = -ENOMEM;
                                 goto Error_5;
@@ -1385,7 +1416,7 @@ End_loop:;
                         do
                         {   H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name[ char_i++ ] = *data;
                             if( !*data )
-                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, GFP_KERNEL );
+                            {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i, E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                     error = -ENOMEM;
@@ -1399,7 +1430,7 @@ End_loop:;
                         if( data == sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.start
                           + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start + directory_table_i ].location.in_sector.size
                         )
-                        {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, GFP_KERNEL );
+                        {   p = krealloc( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, char_i + H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
                             if( !p )
                             {   kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
                                 error = -ENOMEM;
@@ -1417,7 +1448,7 @@ End_loop:;
             );
         }
     // Utworzenie tablicy wolnych bloków.
-    p = kmalloc_array( 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+    p = kmalloc_array( 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_5;
@@ -1485,7 +1516,7 @@ End_loop:;
                             && H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post
                             && H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post != H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
                             ) // Fragmenty poprzedniego (“pre”) i ostatniego (“post”) sektora pozostają.
-                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -1549,7 +1580,7 @@ End_loop:;
                             }else // Wolny blok równy blokowi lokacji pliku.
                             {   if( i + 1 != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
                                     memmove( H_oux_E_fs_Q_device_S[ device_i ].free_table + i, H_oux_E_fs_Q_device_S[ device_i ].free_table + i + 1, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - ( i + 1 ));
-                                p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                                p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -1566,7 +1597,7 @@ End_loop:;
                             if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.pre
                             && H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.pre != H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre
                             ) // Fragment poprzedniego (“pre”) sektora z ostatnimi sektorami centralnych sektorów oraz ewentualnie fragment ostatniego (“post”) sektora pozostają.
-                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -1673,7 +1704,7 @@ End_loop:;
                                   || H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
                                     != H_oux_E_fs_S_sector_size
                                 )) // Ewentualny fragment poprzedniego (“pre”) sektora z ewentualnym fragmentem początkowym pierwszego sektora centralnych sektorów oraz ewentualny fragment końcowy ostatniego sektora centralnych sektorów z ewentualnym fragmentem ostatniego (“post”) sektora pozostają.
-                                {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                                {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   error = -ENOMEM;
                                         goto Error_6;
@@ -1787,7 +1818,7 @@ End_loop:;
                                 }else
                                 {   if( i + 1 != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
                                         memmove( H_oux_E_fs_Q_device_S[ device_i ].free_table + i, H_oux_E_fs_Q_device_S[ device_i ].free_table + i + 1, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - ( i + 1 ));
-                                    p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                                    p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   error = -ENOMEM;
                                         goto Error_6;
@@ -1799,7 +1830,7 @@ End_loop:;
                                 if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
                                   != H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post
                                 ) // Poprzedni (“pre”) i fragment ostatniego (“post”) sektora pozostają.
-                                {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                                {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                     if( !p )
                                     {   error = -ENOMEM;
                                         goto Error_6;
@@ -1831,7 +1862,7 @@ End_loop:;
                             && H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.in_sector.size
                               != H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
                             ) // Krańcowe fragmenty bloku pozostają.
-                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -1862,7 +1893,7 @@ End_loop:;
                             }else // Wolny blok równy blokowi lokacji pliku.
                             {   if( i + 1 != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
                                     memmove( H_oux_E_fs_Q_device_S[ device_i ].free_table + i, H_oux_E_fs_Q_device_S[ device_i ].free_table + i + 1, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - ( i + 1 ));
-                                p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                                p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -1897,7 +1928,7 @@ Subtract_sectors:       if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block
                             || ( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post
                               && H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post != H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
                             )) // Ostatnie sektory centralnych sektorów lub ewentualnie fragment ostatniego (“post”) sektora pozostają.
-                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -1964,7 +1995,7 @@ Subtract_sectors:       if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block
                             || H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post
                               != H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
                             ) // Ostatnie sektory centralnych sektorów lub ewentualnie fragment ostatniego (“post”) sektora pozostają.
-                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                            {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
                                     goto Error_6;
@@ -2036,7 +2067,7 @@ Error_1:
         for( device_i = H_oux_E_fs_Q_device_S_n - 2; ~device_i; device_i-- )
             if( H_oux_E_fs_Q_device_S[ device_i ].bdev_file )
                 break;
-        void *p = krealloc_array( H_oux_E_fs_Q_device_S, ++device_i, sizeof( *H_oux_E_fs_Q_device_S ), GFP_KERNEL );
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S, ++device_i, sizeof( *H_oux_E_fs_Q_device_S ), E_oux_E_fs_S_kmalloc_flags );
         if( !p )
         {   error = -ENOMEM;
             goto Error_0;
@@ -2080,7 +2111,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
             error = -EBUSY;
             goto Error_0;
         }
-    char *sector = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
+    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
     if( !sector )
     {   error = -ENOMEM;
         goto Error_0;
@@ -2860,7 +2891,7 @@ End_loop:;
         for( device_i = H_oux_E_fs_Q_device_S_n - 2; ~device_i; device_i-- )
             if( H_oux_E_fs_Q_device_S[ device_i ].bdev_file )
                 break;
-        void *p = krealloc_array( H_oux_E_fs_Q_device_S, ++device_i, sizeof( *H_oux_E_fs_Q_device_S ), GFP_KERNEL );
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S, ++device_i, sizeof( *H_oux_E_fs_Q_device_S ), E_oux_E_fs_S_kmalloc_flags );
         if( !p )
         {   error = -ENOMEM;
             goto Error_1;

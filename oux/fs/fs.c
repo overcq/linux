@@ -13,38 +13,12 @@
 #include "../lang.h"
 #include "fs.h"
 //==============================================================================
+extern const gfp_t E_oux_E_fs_S_kmalloc_flags;
 extern rwlock_t E_oux_E_fs_S_rw_lock;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
 //TODO Dodać “syscalle” “truncate” i “move”/“rename”.
-uint64_t
-H_oux_E_fs_Q_block_table_R( unsigned device_i
-, uint64_t file_i
-, uint64_t sector
-){  if( !H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
-        return H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start;
-    uint64_t min = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start;
-    uint64_t max = min + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n - 1;
-    uint64_t block_table_i = min + ( max + 1 - min ) / 2;
-    O{  if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == sector )
-            break;
-        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector > sector )
-        {   if( block_table_i == min )
-                break;
-            max = block_table_i - 1;
-            block_table_i = max - ( block_table_i - min ) / 2;
-        }else
-        {   if( block_table_i == max )
-            {   block_table_i++; // Przesuń na “H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector > sector” lub poza zakres podtablicy bloków.
-                break;
-            }
-            min = block_table_i + 1;
-            block_table_i = min + ( max - block_table_i ) / 2;
-        }
-    }
-    return block_table_i;
-}
 uint64_t
 H_oux_E_fs_Q_free_table_R( unsigned device_i
 , uint64_t sector
@@ -130,11 +104,11 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list
     int error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
     if(error)
         goto Error_0;
-    uint64_t *list_ = kmalloc_array( 0, sizeof( uint64_t ), GFP_KERNEL );
+    uint64_t *list_ = kmalloc_array( 0, sizeof( uint64_t ), E_oux_E_fs_S_kmalloc_flags );
     uint64_t n__ = 0;
     for( directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == uid )
-        {   void *p = krealloc_array( list_, n__ + 1, sizeof( uint64_t ), GFP_KERNEL );
+        {   void *p = krealloc_array( list_, n__ + 1, sizeof( uint64_t ), E_oux_E_fs_S_kmalloc_flags );
             if( !p )
             {   kfree( list_ );
                 error = -ENOMEM;
@@ -222,13 +196,13 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
     error = H_oux_E_fs_Q_directory_R( device_i, parent, &parent_directory_i );
     if(error)
         goto Error_0;
-    char *name_ = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
+    char *name_ = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
     long count = strncpy_from_user( name_, name, H_oux_E_fs_S_sector_size );
     if( count == H_oux_E_fs_S_sector_size )
     {   error = -ENAMETOOLONG;
         goto Error_1;
     }
-    void *p = krealloc( name_, count, GFP_KERNEL );
+    void *p = krealloc( name_, count, E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_1;
@@ -253,7 +227,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
     {   uid = 0;
         directory_i = H_oux_E_fs_Q_device_S[ device_i ].directory_n;
     }
-    p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, H_oux_E_fs_Q_device_S[ device_i ].directory_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), GFP_KERNEL );
+    p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, H_oux_E_fs_Q_device_S[ device_i ].directory_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_1;
@@ -281,7 +255,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
         goto Error_0;
     if( directory_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].directory_n )
         memcpy( &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ], &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].directory_n - ( directory_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ));
-    void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, --H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), GFP_KERNEL );
+    void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, --H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_0;
@@ -306,13 +280,13 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M
     error = H_oux_E_fs_Q_directory_R( device_i, parent, &directory_i );
     if(error)
         goto Error_0;
-    char *name_ = kmalloc( H_oux_E_fs_S_sector_size, GFP_KERNEL );
+    char *name_ = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
     long count = strncpy_from_user( name_, name, H_oux_E_fs_S_sector_size );
     if( count == H_oux_E_fs_S_sector_size )
     {   error = -ENAMETOOLONG;
         goto Error_1;
     }
-    void *p = krealloc( name_, count, GFP_KERNEL );
+    void *p = krealloc( name_, count, E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_1;
@@ -337,7 +311,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M
     {   uid = 0;
         file_i = H_oux_E_fs_Q_device_S[ device_i ].file_n;
     }
-    p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, H_oux_E_fs_Q_device_S[ device_i ].file_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), GFP_KERNEL );
+    p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, H_oux_E_fs_Q_device_S[ device_i ].file_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_1;
@@ -371,7 +345,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
         for( uint64_t block_table_i = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n - 1; ~block_table_i; block_table_i-- )
         {   bool realloc_subtract, realloc_add;
             struct H_oux_E_fs_Z_block block = H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ];
-            //TODO Można zamiast tego tworzyć indeksy bloków wstawianych do tablicy wolnych bloków i na końcu ‘realokować’ i przenosić dane. Tylko ze względu na “memmove”.
+            //TODO Można zamiast tego tworzyć indeksy bloków wstawianych do tablicy wolnych bloków, i na końcu ‘realokować’ i przenosić dane. Tylko ze względu na “memmove”.
             if( H_oux_E_fs_Q_device_S[ device_i ].free_table_n
             && free_table_i
             )
@@ -585,7 +559,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
                     );
                 }
                 H_oux_E_fs_Q_device_S[ device_i ].free_table_n--;
-                void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+                void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                 if( !p )
                 {   error = -ENOMEM;
                     goto Error_0;
@@ -593,7 +567,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
                 H_oux_E_fs_Q_device_S[ device_i ].free_table = p;
                 free_table_i--;
             }else if( realloc_add )
-            {   void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), GFP_KERNEL );
+            {   void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
                 if( !p )
                 {   error = -ENOMEM;
                     goto Error_0;
@@ -618,7 +592,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
             , H_oux_E_fs_Q_device_S[ device_i ].block_table_n - ( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + 1 )
             );
         H_oux_E_fs_Q_device_S[ device_i ].block_table_n -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
-        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), GFP_KERNEL );
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_kmalloc_flags );
         if( !p )
         {   error = -ENOMEM;
             goto Error_0;
@@ -627,7 +601,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
     }
     if( file_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].file_n )
         memcpy( &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ], &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].file_n - ( file_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ));
-    void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, --H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), GFP_KERNEL );
+    void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, --H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_0;
