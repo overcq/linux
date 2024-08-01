@@ -91,6 +91,554 @@ H_oux_E_fs_Q_file_R( unsigned device_i
     *file_i = file_i_;
     return 0;
 }
+//------------------------------------------------------------------------------
+int
+H_oux_E_fs_Q_file_Q_block_table_I_unite( unsigned device_i
+, uint64_t file_i
+, uint64_t free_table_found_i
+, uint64_t size_left
+){  int error = 0;
+    bool free_table_found_fit = !size_left;
+    struct H_oux_E_fs_Z_block block = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ];
+    if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+    {   if( block.location.sectors.post > size_left )
+            block.location.sectors.post -= size_left;
+        else
+        {   size_left -= block.location.sectors.post;
+            if( block.location.sectors.n * H_oux_E_fs_S_sector_size > size_left )
+            {   block.location.sectors.post = size_left % H_oux_E_fs_S_sector_size;
+                block.location.sectors.n -= size_left / H_oux_E_fs_S_sector_size;
+                if( !block.location.sectors.n )
+                {   uint64_t pre = block.location.sectors.pre;
+                    block.sector--;
+                    block.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                    block.location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
+                    block.location.in_sector.size = pre;
+                }
+            }else
+            {   size_left -= block.location.sectors.n * H_oux_E_fs_S_sector_size;
+                uint64_t pre = block.location.sectors.pre;
+                block.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                block.location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
+                block.location.in_sector.size = pre - size_left;
+            }
+        }
+    }else
+        block.location.in_sector.size -= size_left;
+    uint64_t block_table_i;
+    bool realloc_subtract, realloc_add;
+    if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+    {   uint64_t upper_block_table_i = ~0;
+        if( free_table_found_fit )
+            for( uint64_t block_table_i = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
+            ; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
+            ; block_table_i++
+            )
+                if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                    {   if(( block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector - 1
+                          && block.location.sectors.post + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre == H_oux_E_fs_S_sector_size
+                        )
+                        || block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector
+                        )
+                        {   if( block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector - 1 )
+                                block.location.sectors.n++;
+                            block.location.sectors.n += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                            block.location.sectors.post = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post;
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+                    }else
+                    {   if( block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector
+                        && block.location.sectors.post == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
+                        )
+                        {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size != H_oux_E_fs_S_sector_size )
+                                block.location.sectors.post += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                            else
+                            {   block.location.sectors.n++;
+                                block.location.sectors.post = 0;
+                            }
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+                    }
+                else
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                    {   if( block.sector == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector - 1
+                        && block.location.in_sector.start + block.location.in_sector.size + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre == H_oux_E_fs_S_sector_size
+                        )
+                        {   uint64_t start = block.location.in_sector.start;
+                            uint64_t size = block.location.in_sector.size;
+                            block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                            block.location.sectors.n = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                            if(start)
+                            {   block.sector++;
+                                block.location.sectors.pre = size + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                            }else
+                            {   block.location.sectors.n++;
+                                block.location.sectors.pre = 0;
+                            }
+                            block.location.sectors.post = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post;
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+                    }else
+                        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector
+                        && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start == block.location.in_sector.start + block.location.in_sector.size
+                        )
+                        {   if( block.location.in_sector.size + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size != H_oux_E_fs_S_sector_size )
+                                block.location.in_sector.size += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                            else
+                            {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                                block.location.sectors.n = 1;
+                                block.location.sectors.pre = block.location.sectors.post = 0;
+                            }
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+        bool lower = no;
+        for( uint64_t block_table_i = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
+        ; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
+        ; block_table_i++
+        )
+            if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+            {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + block.location.sectors.pre == H_oux_E_fs_S_sector_size
+                    )
+                    {   block.location.sectors.n += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n + 1;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.sector = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector;
+                        lower = yes;
+                        break;
+                    }else if( block_table_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i + 1 ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i + 1 ].location.sectors.n == block.sector
+                    )
+                    {   block_table_i++;
+                        block.location.sectors.n += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.sector = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector;
+                        lower = yes;
+                        break;
+                    }
+                }else
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size + block.location.sectors.pre == H_oux_E_fs_S_sector_size
+                    )
+                    {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start )
+                            block.location.sectors.pre += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                        else
+                        {   block.sector--;
+                            block.location.sectors.n++;
+                            block.location.sectors.pre = 0;
+                        }
+                        lower = yes;
+                        break;
+                    }
+            }else
+                if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + block.location.in_sector.size == H_oux_E_fs_S_sector_size
+                    )
+                    {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.location.sectors.n = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n + 1;
+                        block.location.sectors.post = 0;
+                        lower = yes;
+                        break;
+                    }
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n == block.sector
+                    && !block.location.in_sector.start
+                    )
+                    {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.location.sectors.n = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                        block.location.sectors.post = 0;
+                        lower = yes;
+                        break;
+                    }
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post == block.location.in_sector.start
+                    )
+                    {   uint64_t size = block.location.in_sector.size;
+                        block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + size != H_oux_E_fs_S_sector_size )
+                        {   block.location.sectors.n = 0;
+                            block.location.sectors.post = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + size;
+                        }else
+                        {   block.location.sectors.n = 1;
+                            block.location.sectors.post = 0;
+                        }
+                        lower = yes;
+                        break;
+                    }
+                }else
+                {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size == H_oux_E_fs_S_sector_size
+                    && !block.location.in_sector.start
+                    )
+                    {   uint64_t size = block.location.in_sector.size;
+                        block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                        block.location.sectors.n = 0;
+                        block.location.sectors.post = size;
+                        lower = yes;
+                        break;
+                    }
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size == block.location.in_sector.start
+                    )
+                    {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size + block.location.in_sector.size != H_oux_E_fs_S_sector_size )
+                        {   block.location.in_sector.start -= H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                            block.location.in_sector.size += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                        }else
+                        {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                            block.location.sectors.n = 1;
+                            block.location.sectors.pre = block.location.sectors.post = 0;
+                        }
+                        lower = yes;
+                        break;
+                    }
+                }
+        if( ~upper_block_table_i )
+            block_table_i = upper_block_table_i;
+        if( ~upper_block_table_i
+        && lower
+        )
+            realloc_subtract = yes;
+        else if( ~upper_block_table_i
+        || lower
+        )
+        {   realloc_add = no;
+            realloc_subtract = no;
+        }else
+        {   realloc_add = yes;
+            realloc_subtract = no;
+            block_table_i = H_oux_E_fs_Q_device_S[ device_i ].block_table_n;
+        }
+    }else
+    {   realloc_add = yes;
+        H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start = block_table_i = H_oux_E_fs_Q_device_S[ device_i ].block_table_n;
+    }
+    if( realloc_subtract )
+    {   if( block_table_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].block_table_n )
+        {   for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
+                if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start > block_table_i )
+                    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start--;
+            memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i, H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i + 1, H_oux_E_fs_Q_device_S[ device_i ].block_table_n - ( block_table_i + 1 ));
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n--;
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_n--;
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_kmalloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            return error;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
+        block_table_i--;
+    }else if( realloc_add )
+    {   void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_kmalloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            return error;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_n++;
+        H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n++;
+        if( block_table_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].block_table_n )
+        {   memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i + 1, H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i, H_oux_E_fs_Q_device_S[ device_i ].block_table_n - 1 - block_table_i );
+            for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
+                if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start >= block_table_i )
+                    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start++;
+        }
+    }
+    H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ] = block;
+    if( H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from > block_table_i )
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = block_table_i;
+    if( free_table_found_fit )
+    {   if( free_table_found_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
+            memmove( H_oux_E_fs_Q_device_S[ device_i ].free_table + free_table_found_i, H_oux_E_fs_Q_device_S[ device_i ].free_table + free_table_found_i + 1, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - ( free_table_found_i + 1 ));
+        H_oux_E_fs_Q_device_S[ device_i ].free_table_n--;
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            return error;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].free_table = p;
+    }
+    return error;
+}
+int
+H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
+, uint64_t block_start
+, uint64_t *block_n
+, uint64_t free_table_found_i
+, uint64_t size_left
+){  int error = 0;
+    bool free_table_found_fit = !size_left;
+    struct H_oux_E_fs_Z_block block = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ];
+    if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+    {   if( block.location.sectors.post > size_left )
+            block.location.sectors.post -= size_left;
+        else
+        {   size_left -= block.location.sectors.post;
+            if( block.location.sectors.n * H_oux_E_fs_S_sector_size > size_left )
+            {   block.location.sectors.post = size_left % H_oux_E_fs_S_sector_size;
+                block.location.sectors.n -= size_left / H_oux_E_fs_S_sector_size;
+                if( !block.location.sectors.n )
+                {   uint64_t pre = block.location.sectors.pre;
+                    block.sector--;
+                    block.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                    block.location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
+                    block.location.in_sector.size = pre;
+                }
+            }else
+            {   size_left -= block.location.sectors.n * H_oux_E_fs_S_sector_size;
+                uint64_t pre = block.location.sectors.pre;
+                block.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                block.location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
+                block.location.in_sector.size = pre - size_left;
+            }
+        }
+    }else
+        block.location.in_sector.size -= size_left;
+    uint64_t block_table_i;
+    bool realloc_subtract, realloc_add;
+    if( *block_n )
+    {   uint64_t upper_block_table_i = ~0;
+        if( free_table_found_fit )
+            for( uint64_t block_table_i = block_start
+            ; block_table_i != block_start + *block_n
+            ; block_table_i++
+            )
+                if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                    {   if(( block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector - 1
+                          && block.location.sectors.post + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre == H_oux_E_fs_S_sector_size
+                        )
+                        || block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector
+                        )
+                        {   if( block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector - 1 )
+                                block.location.sectors.n++;
+                            block.location.sectors.n += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                            block.location.sectors.post = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post;
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+                    }else
+                    {   if( block.sector + block.location.sectors.n == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector
+                        && block.location.sectors.post == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start
+                        )
+                        {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size != H_oux_E_fs_S_sector_size )
+                                block.location.sectors.post += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                            else
+                            {   block.location.sectors.n++;
+                                block.location.sectors.post = 0;
+                            }
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+                    }
+                else
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                    {   if( block.sector == H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector - 1
+                        && block.location.in_sector.start + block.location.in_sector.size + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre == H_oux_E_fs_S_sector_size
+                        )
+                        {   uint64_t start = block.location.in_sector.start;
+                            uint64_t size = block.location.in_sector.size;
+                            block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                            block.location.sectors.n = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                            if(start)
+                            {   block.sector++;
+                                block.location.sectors.pre = size + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                            }else
+                            {   block.location.sectors.n++;
+                                block.location.sectors.pre = 0;
+                            }
+                            block.location.sectors.post = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post;
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+                    }else
+                        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector
+                        && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start == block.location.in_sector.start + block.location.in_sector.size
+                        )
+                        {   if( block.location.in_sector.size + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size != H_oux_E_fs_S_sector_size )
+                                block.location.in_sector.size += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                            else
+                            {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                                block.location.sectors.n = 1;
+                                block.location.sectors.pre = block.location.sectors.post = 0;
+                            }
+                            upper_block_table_i = block_table_i;
+                            break;
+                        }
+        bool lower = no;
+        for( uint64_t block_table_i = block_start
+        ; block_table_i != block_start + *block_n
+        ; block_table_i++
+        )
+            if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+            {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + block.location.sectors.pre == H_oux_E_fs_S_sector_size
+                    )
+                    {   block.location.sectors.n += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n + 1;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.sector = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector;
+                        lower = yes;
+                        break;
+                    }else if( block_table_i + 1 != block_start + *block_n
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i + 1 ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i + 1 ].location.sectors.n == block.sector
+                    )
+                    {   block_table_i++;
+                        block.location.sectors.n += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.sector = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector;
+                        lower = yes;
+                        break;
+                    }
+                }else
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size + block.location.sectors.pre == H_oux_E_fs_S_sector_size
+                    )
+                    {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start )
+                            block.location.sectors.pre += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                        else
+                        {   block.sector--;
+                            block.location.sectors.n++;
+                            block.location.sectors.pre = 0;
+                        }
+                        lower = yes;
+                        break;
+                    }
+            }else
+                if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+                {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + block.location.in_sector.size == H_oux_E_fs_S_sector_size
+                    )
+                    {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.location.sectors.n = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n + 1;
+                        block.location.sectors.post = 0;
+                        lower = yes;
+                        break;
+                    }
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n == block.sector
+                    && !block.location.in_sector.start
+                    )
+                    {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        block.location.sectors.n = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n;
+                        block.location.sectors.post = 0;
+                        lower = yes;
+                        break;
+                    }
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post == block.location.in_sector.start
+                    )
+                    {   uint64_t size = block.location.in_sector.size;
+                        block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre;
+                        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + size != H_oux_E_fs_S_sector_size )
+                        {   block.location.sectors.n = 0;
+                            block.location.sectors.post = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post + size;
+                        }else
+                        {   block.location.sectors.n = 1;
+                            block.location.sectors.post = 0;
+                        }
+                        lower = yes;
+                        break;
+                    }
+                }else
+                {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector - 1
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size == H_oux_E_fs_S_sector_size
+                    && !block.location.in_sector.start
+                    )
+                    {   uint64_t size = block.location.in_sector.size;
+                        block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                        block.location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                        block.location.sectors.n = 0;
+                        block.location.sectors.post = size;
+                        lower = yes;
+                        break;
+                    }
+                    if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector == block.sector
+                    && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size == block.location.in_sector.start
+                    )
+                    {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size + block.location.in_sector.size != H_oux_E_fs_S_sector_size )
+                        {   block.location.in_sector.start -= H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                            block.location.in_sector.size += H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size;
+                        }else
+                        {   block.location_type = H_oux_E_fs_Z_block_Z_location_S_sectors;
+                            block.location.sectors.n = 1;
+                            block.location.sectors.pre = block.location.sectors.post = 0;
+                        }
+                        lower = yes;
+                        break;
+                    }
+                }
+        if( ~upper_block_table_i )
+            block_table_i = upper_block_table_i;
+        if( ~upper_block_table_i
+        && lower
+        )
+            realloc_subtract = yes;
+        else if( ~upper_block_table_i
+        || lower
+        )
+        {   realloc_add = no;
+            realloc_subtract = no;
+        }else
+        {   realloc_add = yes;
+            realloc_subtract = no;
+            block_table_i = block_start + *block_n;
+        }
+    }else
+    {   realloc_add = yes;
+        block_start = block_table_i = *block_n;
+    }
+    if( realloc_subtract )
+    {   if( block_table_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].block_table_n )
+            memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i, H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i + 1, H_oux_E_fs_Q_device_S[ device_i ].block_table_n - ( block_table_i + 1 ));
+        (*block_n)--;
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_n--;
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_kmalloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            return error;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
+        block_table_i--;
+    }else if( realloc_add )
+    {   void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_kmalloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            return error;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_n++;
+        (*block_n)++;
+        if( block_table_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].block_table_n )
+            memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i + 1, H_oux_E_fs_Q_device_S[ device_i ].block_table + block_table_i, H_oux_E_fs_Q_device_S[ device_i ].block_table_n - 1 - block_table_i );
+    }
+    H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ] = block;
+    if( H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from > block_table_i )
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = block_table_i;
+    if( free_table_found_fit )
+    {   if( free_table_found_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
+            memmove( H_oux_E_fs_Q_device_S[ device_i ].free_table + free_table_found_i, H_oux_E_fs_Q_device_S[ device_i ].free_table + free_table_found_i + 1, H_oux_E_fs_Q_device_S[ device_i ].free_table_n - ( free_table_found_i + 1 ));
+        H_oux_E_fs_Q_device_S[ device_i ].free_table_n--;
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_kmalloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            return error;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].free_table = p;
+    }
+    return error;
+}
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list
 , unsigned, device_i
@@ -182,6 +730,181 @@ Error_0:
     return error;
 }
 //------------------------------------------------------------------------------
+static
+int
+H_oux_E_fs_Q_directory_file_I_append( unsigned device_i
+, long n
+, uint64_t block_start
+, uint64_t *block_n
+){  if( !H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
+    {   pr_err( "H_oux_E_fs_Q_directory_M: no space left on device: %lu\n", n );
+        return -ENOSPC;
+    }
+    uint64_t lowest_size = ~0;
+    uint64_t size;
+    uint64_t free_table_found_i;
+    for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
+    {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
+          ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
+            + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+            + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
+          : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
+        if( size >= n
+        && lowest_size > size
+        )
+        {   lowest_size = size;
+            free_table_found_i = free_table_i;
+            if( size == n )
+                break;
+        }
+    }
+    if( ~lowest_size )
+    {   int error = H_oux_E_fs_Q_block_table_I_unite( device_i
+        , block_start
+        , block_n
+        , free_table_found_i
+        , lowest_size - size
+        );
+        if(error)
+            return error;
+        goto Comp;
+    }
+    O{  if( !H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
+        {   pr_err( "H_oux_E_fs_Q_directory_M: no space left on device: %lu\n", n );
+            return -ENOSPC;
+        }
+        uint64_t greatest_size = 0;
+        uint64_t size;
+        uint64_t free_table_i;
+        for( free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
+        {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
+              ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
+                + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
+              : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
+            if( greatest_size < size )
+            {   if( size >= n )
+                    break;
+                greatest_size = size;
+                free_table_found_i = free_table_i;
+            }
+        }
+        if( free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
+        {   uint64_t lowest_size = ~0;
+            for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
+            {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
+                  ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
+                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
+                  : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
+                if( size >= n
+                && lowest_size > size
+                )
+                {   lowest_size = size;
+                    free_table_found_i = free_table_i;
+                    if( size == n )
+                        break;
+                }
+            }
+        }
+Comp:   if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+        {   if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre )
+            {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre );
+                int error = H_oux_E_fs_Q_block_table_I_unite( device_i
+                , block_start
+                , block_n
+                , free_table_found_i
+                , size - n__
+                );
+                if(error)
+                    return error;
+                n -= n__;
+                if( !n )
+                {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre -= n__;
+                    if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
+                    && !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n
+                    )
+                    {   uint64_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
+                        H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                        H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = 0;
+                        H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size = post;
+                    }
+                    break;
+                }
+            }
+            for( uint64_t sector_i = 0; sector_i != H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n; sector_i++ )
+            {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_S_sector_size );
+                uint64_t size_left = size
+                  - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
+                    + sector_i * H_oux_E_fs_S_sector_size
+                    + n__
+                    );
+                int error = H_oux_E_fs_Q_block_table_I_unite( device_i
+                , block_start
+                , block_n
+                , free_table_found_i
+                , size_left
+                );
+                if(error)
+                    return error;
+                n -= n__;
+                if( !n )
+                {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n -= sector_i + 1;
+                    if( !size_left )
+                        if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post )
+                        {   uint64_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
+                            H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                            H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = 0;
+                            H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size = post;
+                        }else
+                            H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre = 0;
+                    goto Loop_end;
+                }
+            }
+            if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post )
+            {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post );
+                uint64_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
+                int error = H_oux_E_fs_Q_block_table_I_unite( device_i
+                , block_start
+                , block_n
+                , free_table_found_i
+                , post - n__
+                );
+                if(error)
+                    return error;
+                n -= n__;
+                if( !n )
+                {   if( post != n__ )
+                    {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                        H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = 0;
+                        H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size = post;
+                    }
+                    break;
+                }
+            }
+        }else
+        {   uint64_t n__ = H_oux_J_min( n, size );
+            int error = H_oux_E_fs_Q_block_table_I_unite( device_i
+            , block_start
+            , block_n
+            , free_table_found_i
+            , size - n__
+            );
+            if(error)
+                return error;
+            n -= n__;
+            if( !n )
+            {   if( size != n__ )
+                {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start += size;
+                    H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size -= size;
+                }
+                break;
+            }
+        }
+    }
+Loop_end:
+    return 0;
+}
 SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
 , unsigned, device_i
 , uint64_t, parent
@@ -197,19 +920,24 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
     if(error)
         goto Error_0;
     char *name_ = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
-    long count = strncpy_from_user( name_, name, H_oux_E_fs_S_sector_size );
-    if( count == H_oux_E_fs_S_sector_size )
+    long n = strncpy_from_user( name_, name, H_oux_E_fs_S_sector_size );
+    if( n == H_oux_E_fs_S_sector_size )
     {   error = -ENAMETOOLONG;
-        goto Error_1;
+        kfree( name_ );
+        goto Error_0;
     }
-    void *p = krealloc( name_, count, E_oux_E_fs_S_kmalloc_flags );
+    void *p = krealloc( name_, n, E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
-        goto Error_1;
+        kfree( name_ );
+        goto Error_0;
     }
     name_ = p;
-    //TODO Powiększyć listę bloków przydzielonych na tablicę katalogów.
-    
+    error = H_oux_E_fs_Q_directory_file_I_append( device_i, n, H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start, &H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_n );
+    if(error)
+    {   kfree( name_ );
+        goto Error_0;
+    }
     uint64_t uid;
     uint64_t directory_i;
     if( H_oux_E_fs_Q_device_S[ device_i ].directory_n )
@@ -230,7 +958,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
     p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, H_oux_E_fs_Q_device_S[ device_i ].directory_n + 1, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
-        goto Error_1;
+        kfree( name_ );
+        goto Error_0;
     }
     H_oux_E_fs_Q_device_S[ device_i ].directory = p;
     if( directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n )
@@ -239,8 +968,6 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_M
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid = uid;
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent = H_oux_E_fs_Q_device_S[ device_i ].directory[ parent_directory_i ].uid;
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name = name_;
-Error_1:
-    kfree( name_ );
 Error_0:
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
@@ -281,19 +1008,22 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_M
     if(error)
         goto Error_0;
     char *name_ = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
-    long count = strncpy_from_user( name_, name, H_oux_E_fs_S_sector_size );
-    if( count == H_oux_E_fs_S_sector_size )
+    long n = strncpy_from_user( name_, name, H_oux_E_fs_S_sector_size );
+    if( n == H_oux_E_fs_S_sector_size )
     {   error = -ENAMETOOLONG;
         goto Error_1;
     }
-    void *p = krealloc( name_, count, E_oux_E_fs_S_kmalloc_flags );
+    void *p = krealloc( name_, n, E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_1;
     }
     name_ = p;
-    //TODO Powiększyć listę bloków przydzielonych na tablicę plików.
-    
+    error = H_oux_E_fs_Q_directory_file_I_append( device_i, n, H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start, &H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_n );
+    if(error)
+    {   kfree( name_ );
+        goto Error_0;
+    }
     uint64_t uid;
     uint64_t file_i;
     if( H_oux_E_fs_Q_device_S[ device_i ].file_n )
