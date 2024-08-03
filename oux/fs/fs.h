@@ -74,9 +74,11 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t free_table_n;
 };
 //==============================================================================
-uint64_t H_oux_E_fs_Q_free_table_R( unsigned, uint64_t, uint64_t );
+uint64_t H_oux_E_fs_Q_free_table_R_with_max( unsigned, uint64_t, uint64_t );
+uint64_t H_oux_E_fs_Q_free_table_R( unsigned, uint64_t );
 int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_Q_block_table_I_unite( unsigned, uint64_t, uint64_t, uint64_t );
 int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t, uint64_t *, uint64_t, uint64_t );
+int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, long, uint64_t, uint64_t * );
 /******************************************************************************/
