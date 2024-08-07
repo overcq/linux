@@ -80,5 +80,6 @@ int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_Q_block_table_I_unite( unsigned, uint64_t, uint64_t, uint64_t );
 int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t, uint64_t *, uint64_t, uint64_t );
+int H_oux_E_fs_Q_free_table_I_unite( unsigned, const struct H_oux_E_fs_Z_block * );
 int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, long, uint64_t, uint64_t * );
 /******************************************************************************/
