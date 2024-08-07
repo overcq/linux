@@ -1757,8 +1757,7 @@ End_loop:;
                         && !H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.pre
                         && H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post != H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
                         ) // Końcowy fragment pozostaje.
-                        {   uint64_t free_pre = H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.pre;
-                            uint64_t free_post = H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post;
+                        {   uint64_t free_post = H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.post;
                             if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.n
                             && ( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location.sectors.n > 1
                               || ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.start + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size != H_oux_E_fs_S_sector_size

@@ -897,14 +897,36 @@ __SYSCALL(__NR_uretprobe, sys_uretprobe)
 
 
 #define __NR_H_oux_E_fs_Q_device_M 700
+__SYSCALL(__NR_H_oux_E_fs_Q_device_M, sys_H_oux_E_fs_Q_device_M)
 #define __NR_H_oux_E_fs_Q_device_W 701
+__SYSCALL(__NR_H_oux_E_fs_Q_device_W, sys_H_oux_E_fs_Q_device_W)
 #define __NR_H_oux_E_fs_Q_directory_M 702
+__SYSCALL(__NR_H_oux_E_fs_Q_directory_M, sys_H_oux_E_fs_Q_directory_M)
 #define __NR_H_oux_E_fs_Q_directory_W 703
+__SYSCALL(__NR_H_oux_E_fs_Q_directory_W, sys_H_oux_E_fs_Q_directory_W)
 #define __NR_H_oux_E_fs_Q_file_M 704
+__SYSCALL(__NR_H_oux_E_fs_Q_file_M, sys_H_oux_E_fs_Q_file_M)
 #define __NR_H_oux_E_fs_Q_file_W 705
+__SYSCALL(__NR_H_oux_E_fs_Q_file_W, sys_H_oux_E_fs_Q_file_W)
 #define __NR_H_oux_E_fs_Q_directory_I_list 706
+__SYSCALL(__NR_H_oux_E_fs_Q_directory_I_list, sys_H_oux_E_fs_Q_directory_I_list)
 #define __NR_H_oux_E_fs_Q_directory_R_name 707
-#define __NR_H_oux_E_fs_Q_file_R_name 708
-#define __NR_H_oux_E_fs_Q_file_I_lock 709
-#define __NR_H_oux_E_fs_Q_file_I_read 710
-#define __NR_H_oux_E_fs_Q_file_I_write 711
+__SYSCALL(__NR_H_oux_E_fs_Q_directory_R_name, sys_H_oux_E_fs_Q_directory_R_name)
+#define __NR_H_oux_E_fs_Q_directory_P_name 708
+__SYSCALL(__NR_H_oux_E_fs_Q_directory_P_name, sys_H_oux_E_fs_Q_directory_P_name)
+#define __NR_H_oux_E_fs_Q_file_R_name 709
+__SYSCALL(__NR_H_oux_E_fs_Q_file_R_name, sys_H_oux_E_fs_Q_file_R_name)
+#define __NR_H_oux_E_fs_Q_file_P_name 710
+__SYSCALL(__NR_H_oux_E_fs_Q_file_P_name, sys_H_oux_E_fs_Q_file_P_name)
+#define __NR_H_oux_E_fs_Q_directory_I_move 711
+__SYSCALL(__NR_H_oux_E_fs_Q_directory_I_move, sys_H_oux_E_fs_Q_directory_I_move)
+#define __NR_H_oux_E_fs_Q_file_I_move 712
+__SYSCALL(__NR_H_oux_E_fs_Q_file_I_move, sys_H_oux_E_fs_Q_file_I_move)
+#define __NR_H_oux_E_fs_Q_file_I_truncate 713
+__SYSCALL(__NR_H_oux_E_fs_Q_file_I_truncate, sys_H_oux_E_fs_Q_file_I_truncate)
+#define __NR_H_oux_E_fs_Q_file_I_lock 714
+__SYSCALL(__NR_H_oux_E_fs_Q_file_I_lock, sys_H_oux_E_fs_Q_file_I_lock)
+#define __NR_H_oux_E_fs_Q_file_I_read 715
+__SYSCALL(__NR_H_oux_E_fs_Q_file_I_read, sys_H_oux_E_fs_Q_file_I_read)
+#define __NR_H_oux_E_fs_Q_file_I_write 716
+__SYSCALL(__NR_H_oux_E_fs_Q_file_I_write, sys_H_oux_E_fs_Q_file_I_write)

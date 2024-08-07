@@ -1313,7 +1313,12 @@ asmlinkage long sys_H_oux_E_fs_Q_file_M( unsigned, uint64_t, const char __user *
 asmlinkage long sys_H_oux_E_fs_Q_file_W( unsigned, uint64_t );
 asmlinkage long sys_H_oux_E_fs_Q_directory_I_list( unsigned, uint64_t, uint64_t __user *, uint64_t __user * );
 asmlinkage long sys_H_oux_E_fs_Q_directory_R_name( unsigned, uint64_t, uint64_t __user *, char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_directory_P_name( unsigned, uint64_t, uint64_t __user *, char __user * );
 asmlinkage long sys_H_oux_E_fs_Q_file_R_name( unsigned, uint64_t, uint64_t __user *, char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_file_P_name( unsigned, uint64_t, uint64_t __user *, char __user * );
+asmlinkage long sys_H_oux_E_fs_Q_directory_I_move( unsigned, uint64_t, uint64_t );
+asmlinkage long sys_H_oux_E_fs_Q_file_I_move( unsigned, uint64_t, uint64_t );
+asmlinkage long sys_H_oux_E_fs_Q_file_I_truncate( unsigned, uint64_t, uint64_t );
 asmlinkage long sys_H_oux_E_fs_Q_file_I_lock( unsigned, uint64_t, int );
 asmlinkage long sys_H_oux_E_fs_Q_file_I_read( unsigned, uint64_t, uint64_t, uint64_t __user *, char __user * );
 asmlinkage long sys_H_oux_E_fs_Q_file_I_write( unsigned, uint64_t, uint64_t, uint64_t, const char __user * );

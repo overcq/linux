@@ -18,7 +18,7 @@ extern rwlock_t E_oux_E_fs_S_rw_lock;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
-//TODO Dodać “syscalle” “truncate” i “move”.
+//TODO Dodać “syscalle” “truncate”.
 uint64_t
 H_oux_E_fs_Q_free_table_R_with_max( unsigned device_i
 , uint64_t sector
@@ -1186,7 +1186,7 @@ H_oux_E_fs_Q_directory_file_I_block_append_truncate( unsigned device_i
             }
         }
     }
-    if( n < n_prev )
+    if( !n )
     {   if( block_first_use )
         {   error = H_oux_E_fs_Q_free_table_I_unite( device_i, &block_first );
             if(error)
@@ -1274,7 +1274,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     if( !~H_oux_E_fs_Q_device_S[ device_i ].directory_n )
-    {   error = -ENFILE;
+    {   error = -ENOENT;
         goto Error_0;
     }
     uint64_t directory_i;
@@ -1344,7 +1344,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
 ){  write_lock( &E_oux_E_fs_S_rw_lock );
     int error = 0;
     if( !~H_oux_E_fs_Q_device_S[ device_i ].file_n )
-    {   error = -ENFILE;
+    {   error = -ENOENT;
         goto Error_0;
     }
     uint64_t file_i;
@@ -1378,6 +1378,162 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name = name_;
     if( H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from > file_i )
         H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
+Error_0:
+    write_unlock( &E_oux_E_fs_S_rw_lock );
+    return error;
+}
+//------------------------------------------------------------------------------
+SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_I_move
+, unsigned, device_i
+, uint64_t, uid
+, uint64_t, parent
+){  write_lock( &E_oux_E_fs_S_rw_lock );
+    int error = 0;
+    if( !~H_oux_E_fs_Q_device_S[ device_i ].directory_n )
+    {   error = -ENOENT;
+        goto Error_0;
+    }
+    uint64_t directory_i;
+    error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
+    if(error)
+        goto Error_0;
+    uint64_t parent_i;
+    error = H_oux_E_fs_Q_directory_R( device_i, parent, &parent_i );
+    if(error)
+        goto Error_0;
+    H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent = parent;
+Error_0:
+    write_unlock( &E_oux_E_fs_S_rw_lock );
+    return error;
+}
+SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_move
+, unsigned, device_i
+, uint64_t, uid
+, uint64_t, parent
+){  write_lock( &E_oux_E_fs_S_rw_lock );
+    int error = 0;
+    if( !~H_oux_E_fs_Q_device_S[ device_i ].file_n
+    || !~H_oux_E_fs_Q_device_S[ device_i ].directory_n
+    )
+    {   error = -ENOENT;
+        goto Error_0;
+    }
+    uint64_t file_i;
+    error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
+    if(error)
+        goto Error_0;
+    uint64_t parent_i;
+    error = H_oux_E_fs_Q_directory_R( device_i, parent, &parent_i );
+    if(error)
+        goto Error_0;
+    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent = parent;
+Error_0:
+    write_unlock( &E_oux_E_fs_S_rw_lock );
+    return error;
+}
+//------------------------------------------------------------------------------
+SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_truncate
+, unsigned, device_i
+, uint64_t, uid
+, uint64_t, size
+){  write_lock( &E_oux_E_fs_S_rw_lock );
+    int error = 0;
+    if( !~H_oux_E_fs_Q_device_S[ device_i ].file_n )
+    {   error = -ENOENT;
+        goto Error_0;
+    }
+    uint64_t file_i;
+    error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
+    if(error)
+        goto Error_0;
+    uint64_t block_table_i;
+    bool block_first_use = no;
+    struct H_oux_E_fs_Z_block block_first;
+    uint64_t n = size;
+    for( block_table_i = 0; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].block_table_n; block_table_i++ )
+    {   struct H_oux_E_fs_Z_block *block = &H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ];
+        if( block->location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+        {   uint64_t n__ = H_oux_J_min( n, block->location.sectors.pre );
+            n -= n__;
+            if( !n )
+            {   uint64_t size = block->location.sectors.pre + block->location.sectors.n * H_oux_E_fs_S_sector_size + block->location.sectors.post;
+                if( size != n__ )
+                {   block_first_use = yes;
+                    block_first = *block;
+                    block_first.location.sectors.pre -= n__;
+                    if( !block_first.location.sectors.pre
+                    && !block_first.location.sectors.n
+                    )
+                    {   uint64_t post = block_first.location.sectors.post;
+                        block_first.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                        block_first.location.in_sector.start = 0;
+                        block_first.location.in_sector.size = post;
+                    }
+                }
+                break;
+            }
+            for( uint64_t sector_i = 0; sector_i != block->location.sectors.n; sector_i++ )
+            {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_S_sector_size );
+                n -= n__;
+                if( !n )
+                {   uint64_t size_left = size
+                      - ( block->location.sectors.pre
+                        + sector_i * H_oux_E_fs_S_sector_size
+                        + n__
+                        );
+                    if( size_left )
+                    {   block_first_use = yes;
+                        block_first = *block;
+                        if( block->location.sectors.post )
+                        {   block_first.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                            block_first.location.in_sector.start = 0;
+                            block_first.location.in_sector.size = block->location.sectors.post;
+                        }else
+                            block_first.location.sectors.pre = 0;
+                    }
+                    break;
+                }
+            }
+            n__ = H_oux_J_min( n, block->location.sectors.post );
+            n -= n__;
+            if( !n )
+            {   if( block->location.sectors.post != n__ )
+                {   block_first_use = yes;
+                    block_first = *block;
+                    block_first.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                    block_first.location.in_sector.start = 0;
+                    block_first.location.in_sector.size = block->location.sectors.post;
+                }
+                break;
+            }
+        }else
+        {   uint64_t n__ = H_oux_J_min( n, block->location.in_sector.size );
+            n -= n__;
+            if( !n )
+            {   if( block->location.in_sector.size != n__ )
+                {   block_first_use = yes;
+                    block_first = *block;
+                    block_first.location.in_sector.start += size;
+                    block_first.location.in_sector.size -= size;
+                }
+                break;
+            }
+        }
+    }
+    if(n)
+    {   error = -EINVAL;
+        goto Error_0;
+    }
+    if( block_first_use )
+    {   error = H_oux_E_fs_Q_free_table_I_unite( device_i, &block_first );
+        if(error)
+            goto Error_0;
+    }
+    for( block_table_i++; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].block_table_n; block_table_i++ )
+    {   error = H_oux_E_fs_Q_free_table_I_unite( device_i, &H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ] );
+        if(error)
+            goto Error_0;
+    }
 Error_0:
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
