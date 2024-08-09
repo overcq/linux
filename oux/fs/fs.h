@@ -9,6 +9,9 @@
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
 //DFN Katalog główny w “parent” ma wartość “~0”.
+//TODO Zagwarantować, że tablica bloków na plik przydzielonych bloków zmieści się w pierwszym sektorze.
+//TODO Podczas przydzielania nowego wpisu w tablicy przydzielonych bloków zagwarantować dla niego miejsce na dysku.
+//TODO Wybierać/wyszukiwać najpierw wolny blok przyległy do końca ostatniego przydzielonego bloku (by zmniejszyć fragmentację).
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define H_oux_E_fs_S_sector_size        4096
@@ -42,7 +45,7 @@ struct H_oux_E_fs_Z_block
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 struct H_oux_E_fs_Z_file
 { uint64_t uid; // Wartości oprócz “~0”. Klucz sortowania rosnąco.
-  uint64_t parent;
+  uint64_t parent; // “~0” oznacza katalog główny.
   struct
   { uint64_t start;
     uint64_t n;
@@ -53,7 +56,7 @@ struct H_oux_E_fs_Z_file
 };
 struct H_oux_E_fs_Z_directory
 { uint64_t uid; // Wartości oprócz “~0”. Klucz sortowania rosnąco.
-  uint64_t parent;
+  uint64_t parent; // “~0” oznacza katalog główny.
   char *name;
 };
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,5 +84,5 @@ int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_Q_block_table_I_unite( unsigned, uint64_t, uint64_t, uint64_t );
 int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t, uint64_t *, uint64_t, uint64_t );
 int H_oux_E_fs_Q_free_table_I_unite( unsigned, const struct H_oux_E_fs_Z_block * );
-int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, long, uint64_t, uint64_t * );
+int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t, uint64_t * );
 /******************************************************************************/

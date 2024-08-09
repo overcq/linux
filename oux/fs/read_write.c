@@ -100,7 +100,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                 uint64_t n__ = H_oux_J_min( n_, block->location.sectors.pre );
                 if( n__ > pos )
                     n__ -= pos;
-                if( copy_to_user( data + data_p, sector + ( H_oux_E_fs_S_sector_size - block->location.sectors.pre ) + pos, n__ ) != n__ )
+                if( copy_to_user( data + data_p, sector + ( H_oux_E_fs_S_sector_size - block->location.sectors.pre ) + pos, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -123,7 +123,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                     uint64_t n__ = H_oux_J_min( n_, H_oux_E_fs_S_sector_size );
                     if( n__ > pos )
                         n__ -= pos;
-                    if( copy_to_user( data + data_p, sector + pos, n__ ) != n__ )
+                    if( copy_to_user( data + data_p, sector + pos, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
@@ -146,7 +146,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                 uint64_t n__ = H_oux_J_min( n_, block->location.sectors.post );
                 if( n__ > pos )
                     n__ -= pos;
-                if( copy_to_user( data + data_p, sector + pos, n__ ) != n__ )
+                if( copy_to_user( data + data_p, sector + pos, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -169,7 +169,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                 uint64_t n__ = H_oux_J_min( n_, block->location.in_sector.size );
                 if( n__ > pos )
                     n__ -= pos;
-                if( copy_to_user( data + data_p, sector + block->location.in_sector.start + pos, n__ ) != n__ )
+                if( copy_to_user( data + data_p, sector + block->location.in_sector.start + pos, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -231,7 +231,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     goto Error_1;
                 }
                 uint64_t n__ = H_oux_J_min( n, block->location.sectors.pre - pos );
-                if( copy_from_user( sector + ( H_oux_E_fs_S_sector_size - block->location.sectors.pre ) + pos, data + data_p, n__ ) != n__ )
+                if( copy_from_user( sector + ( H_oux_E_fs_S_sector_size - block->location.sectors.pre ) + pos, data + data_p, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -258,7 +258,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                         goto Error_1;
                     }
                     uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_S_sector_size - pos );
-                    if( copy_from_user( sector + pos, data + data_p, n__ ) != n__ )
+                    if( copy_from_user( sector + pos, data + data_p, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
@@ -285,7 +285,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     goto Error_1;
                 }
                 uint64_t n__ = H_oux_J_min( n, block->location.sectors.post - pos );
-                if( copy_from_user( sector + pos, data + data_p, n__ ) != n__ )
+                if( copy_from_user( sector + pos, data + data_p, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -312,7 +312,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     goto Error_1;
                 }
                 uint64_t n__ = H_oux_J_min( n, block->location.in_sector.size - pos );
-                if( copy_from_user( sector + block->location.in_sector.start + pos, data + data_p, n__ ) != n__ )
+                if( copy_from_user( sector + block->location.in_sector.start + pos, data + data_p, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -342,7 +342,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             goto Error_1;
         }
         // Szukaj wolnego bloku na całe żądane dopisywane dane.
-        uint64_t lowest_size = ~0;
+        uint64_t lowest_size = ~0ULL;
         uint64_t size;
         uint64_t free_table_found_i;
         for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
@@ -361,11 +361,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             }
         }
         if( ~lowest_size )
-        {   error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, lowest_size - size );
-            if(error)
-                goto Error_1;
             goto Write;
-        }
         // Szukaj największych wolnych bloków mniejszych od żądanych dopisywanych danych.
         O{  if( !H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
             {   pr_err( "no space left on device: %llu\n", n );
@@ -389,7 +385,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 }
             }
             if( free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
-            {   uint64_t lowest_size = ~0;
+            {   uint64_t lowest_size = ~0ULL;
                 for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
                 {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
                       ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
@@ -409,9 +405,6 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
 Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
             {   if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre )
                 {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre );
-                    error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size - n__ );
-                    if(error)
-                        goto Error_1;
                     loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 ) * H_oux_E_fs_S_sector_size;
                     ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size_ != H_oux_E_fs_S_sector_size )
@@ -419,7 +412,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                         error = -EIO;
                         goto Error_1;
                     }
-                    if( copy_from_user( sector + ( H_oux_E_fs_S_sector_size - H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre ), data + data_p, n__ ) != n__ )
+                    if( copy_from_user( sector + ( H_oux_E_fs_S_sector_size - H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre ), data + data_p, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
@@ -432,7 +425,10 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     data_p += n__;
                     n -= n__;
                     if( !n )
-                    {   if( size != n__ )
+                    {   error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size - n__ );
+                        if(error)
+                            goto Error_1;
+                        if( size != n__ )
                         {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre -= n__;
                             if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
                             && !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n
@@ -448,14 +444,6 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 }
                 for( uint64_t sector_i = 0; sector_i != H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n; sector_i++ )
                 {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_S_sector_size );
-                    uint64_t size_left = size
-                      - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
-                        + sector_i * H_oux_E_fs_S_sector_size
-                        + n__
-                        );
-                    error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size_left );
-                    if(error)
-                        goto Error_1;
                     loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i ) * H_oux_E_fs_S_sector_size;
                     if( n__ != H_oux_E_fs_S_sector_size )
                     {   ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
@@ -465,7 +453,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                             goto Error_1;
                         }
                     }
-                    if( copy_from_user( sector, data + data_p, n__ ) != n__ )
+                    if( copy_from_user( sector, data + data_p, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
@@ -478,7 +466,15 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     data_p += n__;
                     n -= n__;
                     if( !n )
-                    {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n -= sector_i + 1;
+                    {   uint64_t size_left = size
+                          - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
+                            + sector_i * H_oux_E_fs_S_sector_size
+                            + n__
+                            );
+                        error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size_left );
+                        if(error)
+                            goto Error_1;
+                        H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n -= sector_i + 1;
                         if( size_left )
                         {   uint64_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
                             if(post)
@@ -494,9 +490,6 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post )
                 {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post );
                     uint64_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
-                    error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, post - n__ );
-                    if(error)
-                        goto Error_1;
                     loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n ) * H_oux_E_fs_S_sector_size;
                     ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size_ != H_oux_E_fs_S_sector_size )
@@ -504,7 +497,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                         error = -EIO;
                         goto Error_1;
                     }
-                    if( copy_from_user( sector, data + data_p, n__ ) != n__ )
+                    if( copy_from_user( sector, data + data_p, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
@@ -517,7 +510,10 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     data_p += n__;
                     n -= n__;
                     if( !n )
-                    {   if( post != n__ )
+                    {   error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, post - n__ );
+                        if(error)
+                            goto Error_1;
+                        if( post != n__ )
                         {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
                             H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = 0;
                             H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size = post;
@@ -527,9 +523,6 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 }
             }else
             {   uint64_t n__ = H_oux_J_min( n, size );
-                error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size - n__ );
-                if(error)
-                    goto Error_1;
                 loff_t offset = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector * H_oux_E_fs_S_sector_size;
                 ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                 if( size_ != H_oux_E_fs_S_sector_size )
@@ -537,7 +530,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     error = -EIO;
                     goto Error_1;
                 }
-                if( copy_from_user( sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start, data + data_p, n__ ) != n__ )
+                if( copy_from_user( sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start, data + data_p, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -550,13 +543,19 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 data_p += n__;
                 n -= n__;
                 if( !n )
-                {   if( size != n__ )
+                {   error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, size - n__ );
+                    if(error)
+                        goto Error_1;
+                    if( size != n__ )
                     {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start += size;
                         H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size -= size;
                     }
                     break;
                 }
             }
+        error = H_oux_E_fs_Q_file_Q_block_table_I_unite( device_i, file_i, free_table_found_i, 0 );
+        if(error)
+            goto Error_1;
         }
 Loop_end:;
     }
