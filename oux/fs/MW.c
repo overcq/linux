@@ -118,7 +118,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
         error = -ENAMETOOLONG;
         goto Error_0;
     }
-    struct file *bdev_file = bdev_file_open_by_path( pathname_, BLK_OPEN_READ | BLK_OPEN_WRITE | BLK_OPEN_EXCL, 0, 0 );
+    struct file *bdev_file = bdev_file_open_by_path( pathname_, BLK_OPEN_READ | BLK_OPEN_WRITE | BLK_OPEN_EXCL, H_oux_E_fs_Q_device_S, 0 );
     kfree( pathname_ );
     if( IS_ERR( bdev_file ))
     {   error = PTR_ERR( bdev_file );
