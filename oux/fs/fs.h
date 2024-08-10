@@ -8,10 +8,6 @@
 *******************************************************************************/
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
-//DFN Katalog główny w “parent” ma wartość “~0”.
-//TODO Zagwarantować, że tablica bloków na plik przydzielonych bloków zmieści się w pierwszym sektorze.
-//TODO Podczas przydzielania nowego wpisu w tablicy przydzielonych bloków zagwarantować dla niego miejsce na dysku.
-//TODO Wybierać/wyszukiwać najpierw wolny blok przyległy do końca ostatniego przydzielonego bloku (by zmniejszyć fragmentację).
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define H_oux_E_fs_S_sector_size        4096
@@ -65,24 +61,29 @@ struct H_oux_E_fs_Q_device_Z
   struct H_oux_E_fs_Z_block *block_table;
   uint64_t block_table_n;
   uint64_t block_table_changed_from;
-  struct H_oux_E_fs_Z_file *file;
-  uint64_t file_n;
-  uint64_t file_table_changed_from;
-  uint64_t block_table_file_table_start, block_table_file_table_n;
+  uint64_t block_table_block_table_n;
   struct H_oux_E_fs_Z_directory *directory;
   uint64_t directory_n;
   uint64_t directory_table_changed_from;
   uint64_t block_table_directory_table_start, block_table_directory_table_n;
+  struct H_oux_E_fs_Z_file *file;
+  uint64_t file_n;
+  uint64_t file_table_changed_from;
+  uint64_t block_table_file_table_start, block_table_file_table_n;
   struct H_oux_E_fs_Z_block *free_table;
   uint64_t free_table_n;
 };
 //==============================================================================
+uint64_t H_oux_E_fs_Z_start_n_R_size( unsigned, uint64_t, uint64_t );
 uint64_t H_oux_E_fs_Q_free_table_R_with_max( unsigned, uint64_t, uint64_t );
 uint64_t H_oux_E_fs_Q_free_table_R( unsigned, uint64_t );
 int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_Q_block_table_I_unite( unsigned, uint64_t, uint64_t, uint64_t );
-int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t, uint64_t *, uint64_t, uint64_t );
+int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t *, uint64_t *, uint64_t, uint64_t, int64_t * );
 int H_oux_E_fs_Q_free_table_I_unite( unsigned, const struct H_oux_E_fs_Z_block * );
-int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t, uint64_t * );
+int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t * );
+int H_oux_E_fs_Q_block_table_I_append_truncate( unsigned, int64_t );
+int H_oux_E_fs_Z_start_n_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, int64_t * );
+int H_oux_E_fs_Z_start_n_I_block_truncate( unsigned, uint64_t, uint64_t, uint64_t * );
 /******************************************************************************/
