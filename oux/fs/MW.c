@@ -2252,7 +2252,6 @@ End_loop:;
             }
         }
     }
-goto Skip;
     if( ~H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from )
     {   unsigned continue_from = 0;
         uint64_t directory_i = ~0ULL;
@@ -2666,7 +2665,6 @@ goto Skip;
             }
         }
     }
-Skip:;
     // Wyrzucenie z pamięci operacyjnej struktur systemu plików.
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
@@ -2728,7 +2726,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         kfree( name_ );
         goto Error_0;
     }
-    void *p = krealloc( name_, n, E_oux_E_fs_S_kmalloc_flags );
+    void *p = krealloc( name_, n + 1, E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         kfree( name_ );
@@ -2742,7 +2740,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         goto Error_0;
     }
     H_oux_E_fs_Q_device_S[ device_i ].directory = p;
-    error = H_oux_E_fs_Q_directory_file_I_block_append( device_i, n
+    error = H_oux_E_fs_Q_directory_file_I_block_append( device_i, 2 * sizeof( uint64_t ) + n + 1
     , &H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start
     , &H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_n
     );
@@ -2840,7 +2838,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
         kfree( name_ );
         goto Error_0;
     }
-    void *p = krealloc( name_, n, E_oux_E_fs_S_kmalloc_flags );
+    void *p = krealloc( name_, n + 1, E_oux_E_fs_S_kmalloc_flags );
     if( !p )
     {   error = -ENOMEM;
         goto Error_0;
@@ -2853,7 +2851,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
         goto Error_0;
     }
     H_oux_E_fs_Q_device_S[ device_i ].file = p;
-    error = H_oux_E_fs_Q_directory_file_I_block_append( device_i, n
+    error = H_oux_E_fs_Q_directory_file_I_block_append( device_i, 4 * sizeof( uint64_t ) + n + 1
     , &H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start
     , &H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_n
     );
