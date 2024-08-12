@@ -159,6 +159,7 @@ H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
             }else
             {   size_left -= block.location.sectors.n * H_oux_E_fs_S_sector_size;
                 uint16_t pre = block.location.sectors.pre;
+                block.sector--;
                 block.location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
                 block.location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
                 block.location.in_sector.size = pre - size_left;

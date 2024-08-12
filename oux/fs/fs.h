@@ -8,6 +8,7 @@
 *******************************************************************************/
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
+//TODO Trzeba wybierać do przydzielenia bloki na całe tablice bloków, katalogów i plików, by ograniczać fragmentację; i tak zapis nie jest dokonywany odrazu, więc nie trzeba kopiować. Natomiast co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define H_oux_E_fs_S_sector_size        4096
