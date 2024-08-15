@@ -29,7 +29,7 @@ H_oux_E_fs_M( void
     if( !H_oux_E_fs_Q_device_S )
         return -ENOMEM;
     uint64_t *block_table_n = H_oux_J_align_up_p(( char * )sizeof( H_oux_E_fs_Q_device_S_ident ) - 1, uint64_t );
-    H_oux_E_fs_Q_block_table_S_first_sector_max_size = ( uint64_t )&block_table_n[8];
+    H_oux_E_fs_Q_block_table_S_first_sector_max_size = H_oux_E_fs_S_sector_size - ( uint64_t )&block_table_n[8];
     return 0;
 }
 static

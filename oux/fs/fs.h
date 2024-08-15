@@ -9,6 +9,7 @@
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
 //TODO Trzeba wybierać do przydzielenia bloki na całe tablice bloków, katalogów i plików, by ograniczać fragmentację; i tak zapis nie jest dokonywany odrazu, więc nie trzeba kopiować. Natomiast co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
+//TODO Przy tworzeniu, zmianie nazwy, przenoszeniu plików i katalogów zagwarantować niepowtarzalność nazwy w katalogu.
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define H_oux_E_fs_S_sector_size        4096
@@ -58,7 +59,9 @@ struct H_oux_E_fs_Z_directory
 };
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 struct H_oux_E_fs_Q_device_Z
-{ struct file *bdev_file;
+{ void *holder;
+  struct file *bdev_file;
+  uint64_t block_table_size;
   struct H_oux_E_fs_Z_block *block_table;
   uint64_t block_table_n;
   uint64_t block_table_changed_from;
@@ -73,6 +76,7 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t block_table_file_table_start, block_table_file_table_n;
   struct H_oux_E_fs_Z_block *free_table;
   uint64_t free_table_n;
+  bool inconsistent;
 };
 //==============================================================================
 uint64_t H_oux_E_fs_Z_start_n_R_size( unsigned, uint64_t, uint64_t );

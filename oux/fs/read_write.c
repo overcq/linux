@@ -30,8 +30,13 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock
     ))
         return -EINVAL;
     write_lock( &E_oux_E_fs_S_rw_lock );
+    int error = 0;
+    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
+    {   error = -EIO;
+        goto Error_0;
+    }
     uint64_t file_i;
-    int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
+    error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
         goto Error_0;
     if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid
@@ -63,14 +68,20 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
 ){  if( device_i >= H_oux_E_fs_Q_device_S_n )
         return -EINVAL;
     uint64_t n_;
-    get_user( n_, n );
+    int error = get_user( n_, n );
+    if(error)
+        goto Error_0;
     if( !n_
     || !access_ok( data, n_ )
     )
         return -EINVAL;
     read_lock( &E_oux_E_fs_S_rw_lock );
+    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
+    {   error = -EIO;
+        goto Error_0;
+    }
     uint64_t file_i;
-    int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
+    error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
         goto Error_0;
     if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid
@@ -184,7 +195,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
 Loop_end:
     if(pos)
         error = -EINVAL;
-    put_user( data_p, n );
+    error = put_user( data_p, n );
 Error_1:
     kfree(sector);
 Error_0:
@@ -203,8 +214,13 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
     )
         return -EINVAL;
     write_lock( &E_oux_E_fs_S_rw_lock );
+    int error = 0;
+    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
+    {   error = -EIO;
+        goto Error_0;
+    }
     uint64_t file_i;
-    int error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
+    error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
         goto Error_0;
     if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid
@@ -235,6 +251,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 {   error = -EPERM;
                     goto Error_1;
                 }
+                offset = ( block->sector - 1 ) * H_oux_E_fs_S_sector_size;
                 size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                 if( size != H_oux_E_fs_S_sector_size )
                 {   pr_err( "write sector: %llu\n", block->sector - 1 );
@@ -262,6 +279,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     {   error = -EPERM;
                         goto Error_1;
                     }
+                    offset = ( block->sector + sector_i ) * H_oux_E_fs_S_sector_size;
                     size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size != H_oux_E_fs_S_sector_size )
                     {   pr_err( "write sector: %llu\n", block->sector - sector_i );
@@ -289,6 +307,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 {   error = -EPERM;
                     goto Error_1;
                 }
+                offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_S_sector_size;
                 size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                 if( size != H_oux_E_fs_S_sector_size )
                 {   pr_err( "write sector: %llu\n", block->sector + block->location.sectors.n );
@@ -316,6 +335,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 {   error = -EPERM;
                     goto Error_1;
                 }
+                offset = block->sector * H_oux_E_fs_S_sector_size;
                 size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                 if( size != H_oux_E_fs_S_sector_size )
                 {   pr_err( "write sector: %llu\n", block->sector );
@@ -494,6 +514,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     {   error = -EPERM;
                         goto Error_1;
                     }
+                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 ) * H_oux_E_fs_S_sector_size;
                     size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size_ != H_oux_E_fs_S_sector_size )
                     {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 );
@@ -540,6 +561,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     {   error = -EPERM;
                         goto Error_1;
                     }
+                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i ) * H_oux_E_fs_S_sector_size;
                     ssize_t size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size_ != H_oux_E_fs_S_sector_size )
                     {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - sector_i );
@@ -595,6 +617,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     {   error = -EPERM;
                         goto Error_1;
                     }
+                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n ) * H_oux_E_fs_S_sector_size;
                     size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                     if( size_ != H_oux_E_fs_S_sector_size )
                     {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n );
@@ -634,6 +657,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 {   error = -EPERM;
                     goto Error_1;
                 }
+                offset = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector * H_oux_E_fs_S_sector_size;
                 size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
                 if( size_ != H_oux_E_fs_S_sector_size )
                 {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector );
@@ -668,6 +692,8 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
         }
 Loop_end:
         error = H_oux_E_fs_Q_block_table_I_append_truncate( device_i, block_table_diff );
+        if(error)
+            H_oux_E_fs_Q_device_S[ device_i ].inconsistent = yes;
     }
 Error_1:
     kfree(sector);
