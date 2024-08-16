@@ -13,6 +13,7 @@
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define H_oux_E_fs_S_sector_size        4096
+#define E_oux_E_fs_S_kmalloc_flags      GFP_KERNEL
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 //==============================================================================
@@ -79,6 +80,7 @@ struct H_oux_E_fs_Q_device_Z
   bool inconsistent;
 };
 //==============================================================================
+int H_oux_E_fs_Q_device_I_save(unsigned);
 uint64_t H_oux_E_fs_Z_start_n_R_size( unsigned, uint64_t, uint64_t );
 uint64_t H_oux_E_fs_Q_free_table_R_with_max( unsigned, uint64_t, uint64_t );
 uint64_t H_oux_E_fs_Q_free_table_R( unsigned, uint64_t );
@@ -89,6 +91,6 @@ int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t *, uint64_t *, uint64_t
 int H_oux_E_fs_Q_free_table_I_unite( unsigned, const struct H_oux_E_fs_Z_block * );
 int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t * );
 int H_oux_E_fs_Q_block_table_I_append_truncate( unsigned, int64_t );
-int H_oux_E_fs_Z_start_n_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, int64_t * );
+int H_oux_E_fs_Z_start_n_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, int64_t *, uint64_t, uint64_t * );
 int H_oux_E_fs_Z_start_n_I_block_truncate( unsigned, uint64_t, uint64_t, uint64_t * );
 /******************************************************************************/

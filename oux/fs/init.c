@@ -13,7 +13,6 @@
 #include "../lang.h"
 #include "fs.h"
 //==============================================================================
-const gfp_t E_oux_E_fs_S_kmalloc_flags = GFP_KERNEL;
 rwlock_t E_oux_E_fs_S_rw_lock;
 struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 unsigned H_oux_E_fs_Q_device_S_n;
