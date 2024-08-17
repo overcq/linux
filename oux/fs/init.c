@@ -14,6 +14,7 @@
 #include "fs.h"
 //==============================================================================
 rwlock_t E_oux_E_fs_S_rw_lock;
+void *H_oux_E_fs_Q_device_S_holder;
 struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 unsigned H_oux_E_fs_Q_device_S_n;
 uint16_t H_oux_E_fs_Q_block_table_S_first_sector_max_size;
@@ -23,6 +24,9 @@ int
 __init
 H_oux_E_fs_M( void
 ){  E_oux_E_fs_S_rw_lock = __RW_LOCK_UNLOCKED( E_oux_E_fs_S_rw_lock );
+    H_oux_E_fs_Q_device_S_holder = kmalloc( 0, E_oux_E_fs_S_kmalloc_flags );
+    if( !H_oux_E_fs_Q_device_S_holder )
+        return -ENOMEM;
     H_oux_E_fs_Q_device_S_n = 0;
     H_oux_E_fs_Q_device_S = kmalloc_array( H_oux_E_fs_Q_device_S_n, sizeof( *H_oux_E_fs_Q_device_S ), E_oux_E_fs_S_kmalloc_flags );
     if( !H_oux_E_fs_Q_device_S )
@@ -35,7 +39,8 @@ static
 void
 __exit
 H_oux_E_fs_W( void
-){  kfree( H_oux_E_fs_Q_device_S );
+){  kfree( H_oux_E_fs_Q_device_S_holder );
+    kfree( H_oux_E_fs_Q_device_S );
 }
 //==============================================================================
 MODULE_DESCRIPTION( "OUX filesystem" );
