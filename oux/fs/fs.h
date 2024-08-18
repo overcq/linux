@@ -13,7 +13,7 @@
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define H_oux_E_fs_S_sector_size        4096
-#define E_oux_E_fs_S_kmalloc_flags      GFP_KERNEL
+#define E_oux_E_fs_S_alloc_flags        GFP_KERNEL
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 //==============================================================================

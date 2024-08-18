@@ -90,7 +90,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
     {   error = -EPERM;
         goto Error_0;
     }
-    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
+    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_alloc_flags );
     if( !sector )
     {   error = -ENOMEM;
         goto Error_0;
@@ -228,7 +228,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
     {   error = -EPERM;
         goto Error_0;
     }
-    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_kmalloc_flags );
+    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_alloc_flags );
     if( !sector )
     {   error = -ENOMEM;
         goto Error_0;
