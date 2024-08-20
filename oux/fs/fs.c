@@ -158,6 +158,7 @@ H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
 , int64_t *block_table_diff
 ){  bool free_table_found_fit = !size_left;
     struct H_oux_E_fs_Z_block block = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ];
+    pr_info( "size_left: %llu\n", size_left );
     pr_info( "free block: type: %u, sector: %llu\n", block.location_type, block.sector );
     if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
         pr_info( "n: %llu, pre: %hu, post: %hu\n", block.location.sectors.n, block.location.sectors.pre, block.location.sectors.post );
@@ -385,15 +386,15 @@ H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
         )
         {   if( ~upper_block_table_i )
                 block_table_i = upper_block_table_i;
+            realloc_subtract = no;
             realloc_add = no;
-            realloc_subtract = no;
         }else
-        {   realloc_add = yes;
-            realloc_subtract = no;
+        {   realloc_subtract = no;
+            realloc_add = yes;
         }
     }else
-    {   realloc_add = yes;
-        realloc_subtract = no;
+    {   realloc_subtract = no;
+        realloc_add = yes;
         if( block_start )
             *block_start = block_table_i = H_oux_E_fs_Q_device_S[ device_i ].block_table_n;
         else
@@ -949,7 +950,7 @@ Compute:(*count)++;
                 if( !n )
                 {   uint64_t size_left = size
                       - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
-                        +  sector_i * H_oux_E_fs_S_sector_size
+                        + sector_i * H_oux_E_fs_S_sector_size
                         + n__
                         );
                     int error = H_oux_E_fs_Q_block_table_I_unite( device_i
@@ -968,7 +969,8 @@ Compute:(*count)++;
                         uint16_t pre = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre = H_oux_E_fs_S_sector_size - n__;
                         if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n )
                             if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post )
-                            {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
+                            {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector--;
+                                H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
                                 H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
                                 H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size = pre;
                             }else if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre )
@@ -1017,8 +1019,8 @@ Compute:(*count)++;
                 if(error)
                     return error;
                 if( size != n__ )
-                {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start += size;
-                    H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size -= size;
+                {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start += n__;
+                    H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size -= n__;
                 }
                 break;
             }
