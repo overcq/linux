@@ -8,7 +8,7 @@
 *******************************************************************************/
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
-//TODO Trzeba wybierać do przydzielenia bloki na całe tablice bloków, katalogów i plików, by ograniczać fragmentację; i tak zapis nie jest dokonywany odrazu, więc nie trzeba kopiować. Natomiast co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
+//TODO Co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
 //TODO Przy tworzeniu, zmianie nazwy, przenoszeniu plików i katalogów zagwarantować niepowtarzalność nazwy w katalogu.
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
@@ -88,8 +88,8 @@ int H_oux_E_fs_Q_file_R( unsigned, uint64_t, uint64_t * );
 int H_oux_E_fs_Q_file_Q_block_table_I_unite( unsigned, uint64_t, uint64_t, uint64_t );
 int H_oux_E_fs_Q_block_table_I_unite( unsigned, uint64_t *, uint64_t *, uint64_t, uint64_t, int64_t * );
 int H_oux_E_fs_Q_free_table_I_unite( unsigned, const struct H_oux_E_fs_Z_block * );
-int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t * );
+int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, uint64_t * );
 int H_oux_E_fs_Q_block_table_I_append_truncate( unsigned, int64_t );
-int H_oux_E_fs_Z_start_n_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, int64_t *, uint64_t, uint64_t * );
+int H_oux_E_fs_Z_start_n_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, uint64_t *, int64_t *, uint64_t, uint64_t * );
 int H_oux_E_fs_Z_start_n_I_block_truncate( unsigned, uint64_t, uint64_t, uint64_t * );
 /******************************************************************************/
