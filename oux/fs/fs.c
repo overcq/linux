@@ -459,11 +459,11 @@ H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
           : sizeof( uint16_t ) + sizeof( uint16_t )
           );
     }
-    //pr_info( "block 3: type: %u, sector: %llu\n", block.location_type, block.sector );
-    //if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
-        //pr_info( "n: %llu, pre: %hu, post: %hu\n", block.location.sectors.n, block.location.sectors.pre, block.location.sectors.post );
-    //else
-        //pr_info( "start: %hu, size: %hu\n", block.location.in_sector.start, block.location.in_sector.size );
+    pr_info( "block 3: type: %u, sector: %llu\n", block.location_type, block.sector );
+    if( block.location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
+        pr_info( "n: %llu, pre: %hu, post: %hu\n", block.location.sectors.n, block.location.sectors.pre, block.location.sectors.post );
+    else
+        pr_info( "start: %hu, size: %hu\n", block.location.in_sector.start, block.location.in_sector.size );
     H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ] = block;
     if( H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from > block_table_i )
         H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = block_table_i;
@@ -778,7 +778,7 @@ H_oux_E_fs_Z_start_n_I_block_append( unsigned device_i
                     break;
             }
         }
-        if( no && ~lowest_size )
+        if( ~lowest_size )
         {   for( uint64_t block_table_i = 0; block_table_i != *block_n; block_table_i++ )
             {   int error = H_oux_E_fs_Q_free_table_I_unite( device_i, H_oux_E_fs_Q_device_S[ device_i ].block_table + block_start_ + block_table_i );
                 if(error)
