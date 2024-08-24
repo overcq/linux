@@ -9,10 +9,8 @@
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
 //TODO Co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
-//TODO Przy tworzeniu, zmianie nazwy, przenoszeniu plików i katalogów zagwarantować niepowtarzalność nazwy w katalogu.
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
-#define H_oux_E_fs_S_sector_size        4096
 #define E_oux_E_fs_S_alloc_flags        GFP_KERNEL
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -32,11 +30,11 @@ struct H_oux_E_fs_Z_block
   union
   { struct
     { uint64_t n;
-      uint16_t pre, post; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
+      uint16_t pre, post; // Wartości od 0 do “H_oux_E_fs_Q_device_S[ device_i ].sector_size - 1”.
     }sectors;
     struct
-    { uint16_t start; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
-      uint16_t size; // Wartości od 0 do “H_oux_E_fs_S_sector_size - 1”.
+    { uint16_t start; // Wartości od 0 do “H_oux_E_fs_Q_device_S[ device_i ].sector_size - 1”.
+      uint16_t size; // Wartości od 0 do “H_oux_E_fs_Q_device_S[ device_i ].sector_size - 1”.
     }in_sector;
   }location; //DFN Jeśli “!sectors.n” oraz “!sectors.pre || !sectors.post”, to ustawić “in_sector”.
   enum H_oux_E_Fs_Z_block_Z_location location_type;
@@ -77,6 +75,8 @@ struct H_oux_E_fs_Q_device_Z
   uint64_t block_table_file_table_start, block_table_file_table_n;
   struct H_oux_E_fs_Z_block *free_table;
   uint64_t free_table_n;
+  uint16_t sector_size;
+  uint16_t first_sector_max_size;
   bool inconsistent;
 };
 //==============================================================================

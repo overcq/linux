@@ -17,7 +17,6 @@ rwlock_t E_oux_E_fs_S_rw_lock;
 void *H_oux_E_fs_Q_device_S_holder;
 struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 unsigned H_oux_E_fs_Q_device_S_n;
-uint16_t H_oux_E_fs_Q_block_table_S_first_sector_max_size;
 //==============================================================================
 static
 int
@@ -31,16 +30,14 @@ H_oux_E_fs_M( void
     H_oux_E_fs_Q_device_S = kmalloc_array( H_oux_E_fs_Q_device_S_n, sizeof( *H_oux_E_fs_Q_device_S ), E_oux_E_fs_S_alloc_flags );
     if( !H_oux_E_fs_Q_device_S )
         return -ENOMEM;
-    uint64_t *block_table_n = H_oux_J_align_up_p(( char * )sizeof( H_oux_E_fs_Q_device_S_ident ) - 1, uint64_t );
-    H_oux_E_fs_Q_block_table_S_first_sector_max_size = H_oux_E_fs_S_sector_size - ( uint64_t )&block_table_n[6];
     return 0;
 }
 static
 void
 __exit
 H_oux_E_fs_W( void
-){  kfree( H_oux_E_fs_Q_device_S_holder );
-    kfree( H_oux_E_fs_Q_device_S );
+){  kfree( H_oux_E_fs_Q_device_S );
+    kfree( H_oux_E_fs_Q_device_S_holder );
 }
 //==============================================================================
 MODULE_DESCRIPTION( "OUX filesystem" );

@@ -90,7 +90,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
     {   error = -EPERM;
         goto Error_0;
     }
-    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_alloc_flags );
+    char *sector = kmalloc( H_oux_E_fs_Q_device_S[ device_i ].sector_size, E_oux_E_fs_S_alloc_flags );
     if( !sector )
     {   error = -ENOMEM;
         goto Error_0;
@@ -100,9 +100,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
     {   struct H_oux_E_fs_Z_block *block = H_oux_E_fs_Q_device_S[ device_i ].block_table + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i;
         if( block->location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
         {   if( pos < block->location.sectors.pre )
-            {   loff_t offset = ( block->sector - 1 ) * H_oux_E_fs_S_sector_size;
-                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+            {   loff_t offset = ( block->sector - 1 ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", block->sector - 1 );
                     error = -EIO;
                     goto Error_1;
@@ -110,7 +110,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                 uint64_t n__ = H_oux_J_min( n_, block->location.sectors.pre );
                 if( n__ > pos )
                     n__ -= pos;
-                if( copy_to_user( data + data_p, sector + ( H_oux_E_fs_S_sector_size - block->location.sectors.pre ) + pos, n__ ))
+                if( copy_to_user( data + data_p, sector + ( H_oux_E_fs_Q_device_S[ device_i ].sector_size - block->location.sectors.pre ) + pos, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
@@ -122,15 +122,15 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
             }else
                 pos -= block->location.sectors.pre;
             for( uint64_t sector_i = 0; sector_i != block->location.sectors.n; sector_i++ )
-            {   if( pos < H_oux_E_fs_S_sector_size )
-                {   loff_t offset = ( block->sector + sector_i ) * H_oux_E_fs_S_sector_size;
-                    ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size != H_oux_E_fs_S_sector_size )
+            {   if( pos < H_oux_E_fs_Q_device_S[ device_i ].sector_size )
+                {   loff_t offset = ( block->sector + sector_i ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "read sector: %llu\n", block->sector + sector_i );
                         error = -EIO;
                         goto Error_1;
                     }
-                    uint64_t n__ = H_oux_J_min( n_, H_oux_E_fs_S_sector_size );
+                    uint64_t n__ = H_oux_J_min( n_, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
                     if( n__ > pos )
                         n__ -= pos;
                     if( copy_to_user( data + data_p, sector + pos, n__ ))
@@ -143,12 +143,12 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                         goto Loop_end;
                     pos = 0;
                 }else
-                    pos -= H_oux_E_fs_S_sector_size;
+                    pos -= H_oux_E_fs_Q_device_S[ device_i ].sector_size;
             }
             if( pos < block->location.sectors.post )
-            {   loff_t offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_S_sector_size;
-                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+            {   loff_t offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", block->sector + block->location.sectors.n );
                     error = -EIO;
                     goto Error_1;
@@ -169,9 +169,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                 pos -= block->location.sectors.post;
         }else
             if( pos < block->location.in_sector.size )
-            {   loff_t offset = block->sector * H_oux_E_fs_S_sector_size;
-                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+            {   loff_t offset = block->sector * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", block->sector );
                     error = -EIO;
                     goto Error_1;
@@ -228,7 +228,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
     {   error = -EPERM;
         goto Error_0;
     }
-    char *sector = kmalloc( H_oux_E_fs_S_sector_size, E_oux_E_fs_S_alloc_flags );
+    char *sector = kmalloc( H_oux_E_fs_Q_device_S[ device_i ].sector_size, E_oux_E_fs_S_alloc_flags );
     if( !sector )
     {   error = -ENOMEM;
         goto Error_0;
@@ -238,21 +238,21 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
     {   struct H_oux_E_fs_Z_block *block = H_oux_E_fs_Q_device_S[ device_i ].block_table + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i;
         if( block->location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
         {   if( pos < block->location.sectors.pre )
-            {   loff_t offset = ( block->sector - 1 ) * H_oux_E_fs_S_sector_size;
-                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+            {   loff_t offset = ( block->sector - 1 ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", block->sector - 1 );
                     error = -EIO;
                     goto Error_1;
                 }
                 uint64_t n__ = H_oux_J_min( n, block->location.sectors.pre - pos );
-                if( copy_from_user( sector + ( H_oux_E_fs_S_sector_size - block->location.sectors.pre ) + pos, data + data_p, n__ ))
+                if( copy_from_user( sector + ( H_oux_E_fs_Q_device_S[ device_i ].sector_size - block->location.sectors.pre ) + pos, data + data_p, n__ ))
                 {   error = -EPERM;
                     goto Error_1;
                 }
-                offset = ( block->sector - 1 ) * H_oux_E_fs_S_sector_size;
-                size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+                offset = ( block->sector - 1 ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "write sector: %llu\n", block->sector - 1 );
                     error = -EIO;
                     goto Error_1;
@@ -265,22 +265,22 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             }else
                 pos -= block->location.sectors.pre;
             for( uint64_t sector_i = 0; sector_i != block->location.sectors.n; sector_i++ )
-            {   if( pos < H_oux_E_fs_S_sector_size )
-                {   loff_t offset = ( block->sector + sector_i ) * H_oux_E_fs_S_sector_size;
-                    ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size != H_oux_E_fs_S_sector_size )
+            {   if( pos < H_oux_E_fs_Q_device_S[ device_i ].sector_size )
+                {   loff_t offset = ( block->sector + sector_i ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "read sector: %llu\n", block->sector + sector_i );
                         error = -EIO;
                         goto Error_1;
                     }
-                    uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_S_sector_size - pos );
+                    uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].sector_size - pos );
                     if( copy_from_user( sector + pos, data + data_p, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
-                    offset = ( block->sector + sector_i ) * H_oux_E_fs_S_sector_size;
-                    size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size != H_oux_E_fs_S_sector_size )
+                    offset = ( block->sector + sector_i ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "write sector: %llu\n", block->sector - sector_i );
                         error = -EIO;
                         goto Error_1;
@@ -291,12 +291,12 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                         break;
                     pos = 0;
                 }else
-                    pos -= H_oux_E_fs_S_sector_size;
+                    pos -= H_oux_E_fs_Q_device_S[ device_i ].sector_size;
             }
             if( pos < block->location.sectors.post )
-            {   loff_t offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_S_sector_size;
-                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+            {   loff_t offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", block->sector + block->location.sectors.n );
                     error = -EIO;
                     goto Error_1;
@@ -306,9 +306,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 {   error = -EPERM;
                     goto Error_1;
                 }
-                offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_S_sector_size;
-                size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+                offset = ( block->sector + block->location.sectors.n ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "write sector: %llu\n", block->sector + block->location.sectors.n );
                     error = -EIO;
                     goto Error_1;
@@ -322,9 +322,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 pos -= block->location.sectors.post;
         }else
             if( pos < block->location.in_sector.size )
-            {   loff_t offset = block->sector * H_oux_E_fs_S_sector_size;
-                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+            {   loff_t offset = block->sector * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", block->sector );
                     error = -EIO;
                     goto Error_1;
@@ -334,9 +334,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 {   error = -EPERM;
                     goto Error_1;
                 }
-                offset = block->sector * H_oux_E_fs_S_sector_size;
-                size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size != H_oux_E_fs_S_sector_size )
+                offset = block->sector * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                size = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "write sector: %llu\n", block->sector );
                     error = -EIO;
                     goto Error_1;
@@ -373,7 +373,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             for( ; ~free_table_i; free_table_i-- )
             {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
                   ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
-                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_Q_device_S[ device_i ].sector_size
                     + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
                   : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
                 if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].sector
@@ -387,7 +387,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                         == H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].sector - 1
                       && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].location.sectors.post
                         + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
-                        == H_oux_E_fs_S_sector_size
+                        == H_oux_E_fs_Q_device_S[ device_i ].sector_size
                     )
                     || ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].sector
                         + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].location.sectors.n
@@ -423,7 +423,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             for( ; ~free_table_i; free_table_i-- )
             {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
                   ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
-                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_Q_device_S[ device_i ].sector_size
                     + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
                   : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
                 if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].sector < H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].sector )
@@ -432,7 +432,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].sector == H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].sector - 1
                     && ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].location.in_sector.start
                       + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].location.in_sector.size
-                      == H_oux_E_fs_S_sector_size - H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
+                      == H_oux_E_fs_Q_device_S[ device_i ].sector_size - H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
                     ))
                     {   free_table_found_i = free_table_i;
                         goto Write;
@@ -446,7 +446,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     || ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].sector == H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].sector - 1
                       && H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].location.in_sector.start
                         + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_start + block_n - 1 ].location.in_sector.size
-                        == H_oux_E_fs_S_sector_size
+                        == H_oux_E_fs_Q_device_S[ device_i ].sector_size
                       && !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.start
                     ))
                     {   free_table_found_i = free_table_i;
@@ -460,7 +460,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
         for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
         {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
               ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
-                + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_Q_device_S[ device_i ].sector_size
                 + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
               : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
             if( size >= n
@@ -487,7 +487,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             for( free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
             {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
                   ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
-                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                    + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_Q_device_S[ device_i ].sector_size
                     + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
                   : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
                 if( greatest_size < size )
@@ -505,7 +505,7 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
                 {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
                       ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
-                        + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_S_sector_size
+                        + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_Q_device_S[ device_i ].sector_size
                         + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.post
                       : H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.in_sector.size;
                     if( size >= n
@@ -522,20 +522,20 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
 Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
             {   if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre )
                 {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre );
-                    loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 ) * H_oux_E_fs_S_sector_size;
-                    ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size_ != H_oux_E_fs_S_sector_size )
+                    loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "read sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 );
                         error = -EIO;
                         goto Error_1;
                     }
-                    if( copy_from_user( sector + ( H_oux_E_fs_S_sector_size - H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre ), data + data_p, n__ ))
+                    if( copy_from_user( sector + ( H_oux_E_fs_Q_device_S[ device_i ].sector_size - H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre ), data + data_p, n__ ))
                     {   error = -EPERM;
                         goto Error_1;
                     }
-                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 ) * H_oux_E_fs_S_sector_size;
-                    size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size_ != H_oux_E_fs_S_sector_size )
+                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - 1 );
                         error = -EIO;
                         goto Error_1;
@@ -564,11 +564,11 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     }
                 }
                 for( uint64_t sector_i = 0; sector_i != H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n; sector_i++ )
-                {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_S_sector_size );
-                    loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i ) * H_oux_E_fs_S_sector_size;
-                    if( n__ != H_oux_E_fs_S_sector_size )
-                    {   ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                        if( size != H_oux_E_fs_S_sector_size )
+                {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
+                    loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    if( n__ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
+                    {   ssize_t size = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                        if( size != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                         {   pr_err( "read sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i );
                             error = -EIO;
                             goto Error_1;
@@ -578,9 +578,9 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     {   error = -EPERM;
                         goto Error_1;
                     }
-                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i ) * H_oux_E_fs_S_sector_size;
-                    ssize_t size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size_ != H_oux_E_fs_S_sector_size )
+                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + sector_i ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    ssize_t size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector - sector_i );
                         error = -EIO;
                         goto Error_1;
@@ -590,7 +590,7 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     if( !n )
                     {   uint64_t size_left = size
                           - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
-                            + sector_i * H_oux_E_fs_S_sector_size
+                            + sector_i * H_oux_E_fs_Q_device_S[ device_i ].sector_size
                             + n__
                             );
                         error = H_oux_E_fs_Q_block_table_I_unite( device_i
@@ -605,13 +605,13 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                         {   uint16_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
                             H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector += sector_i + 1;
                             H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n -= sector_i + 1;
-                            H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre = H_oux_E_fs_S_sector_size - n__;
+                            H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre = H_oux_E_fs_Q_device_S[ device_i ].sector_size - n__;
                             if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n )
                                 if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post )
                                 {   uint16_t pre = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre;
                                     H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector--;
                                     H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
-                                    H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = H_oux_E_fs_S_sector_size - pre;
+                                    H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.start = H_oux_E_fs_Q_device_S[ device_i ].sector_size - pre;
                                     H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.in_sector.size = pre;
                                 }else if( !H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre )
                                 {   H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location_type = H_oux_E_fs_Z_block_Z_location_S_in_sector;
@@ -625,9 +625,9 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post )
                 {   uint64_t n__ = H_oux_J_min( n, H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post );
                     uint16_t post = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.post;
-                    loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n ) * H_oux_E_fs_S_sector_size;
-                    ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size_ != H_oux_E_fs_S_sector_size )
+                    loff_t offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "read sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n );
                         error = -EIO;
                         goto Error_1;
@@ -636,9 +636,9 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                     {   error = -EPERM;
                         goto Error_1;
                     }
-                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n ) * H_oux_E_fs_S_sector_size;
-                    size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                    if( size_ != H_oux_E_fs_S_sector_size )
+                    offset = ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n ) * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                    size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                    if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                     {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.n );
                         error = -EIO;
                         goto Error_1;
@@ -665,9 +665,9 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 }
             }else
             {   uint64_t n__ = H_oux_J_min( n, size );
-                loff_t offset = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector * H_oux_E_fs_S_sector_size;
-                ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size_ != H_oux_E_fs_S_sector_size )
+                loff_t offset = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                ssize_t size_ = kernel_read( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "read sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector );
                     error = -EIO;
                     goto Error_1;
@@ -676,9 +676,9 @@ Write:      if( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i
                 {   error = -EPERM;
                     goto Error_1;
                 }
-                offset = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector * H_oux_E_fs_S_sector_size;
-                size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_S_sector_size, &offset );
-                if( size_ != H_oux_E_fs_S_sector_size )
+                offset = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector * H_oux_E_fs_Q_device_S[ device_i ].sector_size;
+                size_ = kernel_write( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, sector, H_oux_E_fs_Q_device_S[ device_i ].sector_size, &offset );
+                if( size_ != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
                 {   pr_err( "write sector: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].sector );
                     error = -EIO;
                     goto Error_1;
