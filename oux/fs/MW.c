@@ -132,13 +132,13 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
     int error;
     long count = strncpy_from_user( pathname_, pathname, max_path );
     if( count == -EFAULT )
-    {   kfree( pathname_ );
-        error = -EFAULT;
+    {   error = -EFAULT;
+        kfree( pathname_ );
         goto Error_0;
     }
     if( count == max_path )
-    {   kfree( pathname_ );
-        error = -ENAMETOOLONG;
+    {   error = -ENAMETOOLONG;
+        kfree( pathname_ );
         goto Error_0;
     }
     unsigned device_i;
@@ -3404,12 +3404,12 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
         goto Error_0;
 Error_1:
     // Wyrzucenie z pamięci operacyjnej struktur systemu plików.
-    for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
-        kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
-    kfree( H_oux_E_fs_Q_device_S[ device_i ].directory );
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
     kfree( H_oux_E_fs_Q_device_S[ device_i ].file );
+    for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
+        kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
+    kfree( H_oux_E_fs_Q_device_S[ device_i ].directory );
     kfree( H_oux_E_fs_Q_device_S[ device_i ].block_table );
     filp_close( H_oux_E_fs_Q_device_S[ device_i ].bdev_file, 0 );
     if( device_i != H_oux_E_fs_Q_device_S_n - 1 )
@@ -3450,9 +3450,9 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
     {   error = -ENFILE;
         goto Error_0;
     }
-    uint64_t parent_directory_i;
     if( ~parent )
-    {   error = H_oux_E_fs_Q_directory_R( device_i, parent, &parent_directory_i );
+    {   uint64_t parent_directory_i;
+        error = H_oux_E_fs_Q_directory_R( device_i, parent, &parent_directory_i );
         if(error)
             goto Error_0;
     }
@@ -3462,6 +3462,11 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         goto Error_0;
     }
     long n = strncpy_from_user( name_, name, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
+    if( n == -EFAULT )
+    {   error = -EFAULT;
+        kfree( name_ );
+        goto Error_0;
+    }
     if( n == H_oux_E_fs_Q_device_S[ device_i ].sector_size )
     {   error = -ENAMETOOLONG;
         kfree( name_ );
@@ -3478,7 +3483,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
     }
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -3486,7 +3491,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -3541,7 +3546,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         );
     H_oux_E_fs_Q_device_S[ device_i ].directory_n++;
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid = uid_;
-    H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent = ~parent ? H_oux_E_fs_Q_device_S[ device_i ].directory[ parent_directory_i ].uid : ~0ULL;
+    H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent = parent;
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name = name_;
     if( H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from > directory_i )
         H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = directory_i;
@@ -3595,9 +3600,9 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
     {   error = -ENFILE;
         goto Error_0;
     }
-    uint64_t directory_i;
     if( ~parent )
-    {   error = H_oux_E_fs_Q_directory_R( device_i, parent, &directory_i );
+    {   uint64_t parent_directory_i;
+        error = H_oux_E_fs_Q_directory_R( device_i, parent, &parent_directory_i );
         if(error)
             goto Error_0;
     }
@@ -3607,6 +3612,11 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
         goto Error_0;
     }
     long n = strncpy_from_user( name_, name, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
+    if( n == -EFAULT )
+    {   error = -EFAULT;
+        kfree( name_ );
+        goto Error_0;
+    }
     if( n == H_oux_E_fs_Q_device_S[ device_i ].sector_size )
     {   error = -ENAMETOOLONG;
         kfree( name_ );
@@ -3622,7 +3632,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
     }
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -3630,7 +3640,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
         }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -3685,7 +3695,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
         );
     H_oux_E_fs_Q_device_S[ device_i ].file_n++;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid = uid_;
-    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent = ~parent ? H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid : ~0ULL;
+    H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent = parent;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n = 0;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name = name_;
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid = ~0;

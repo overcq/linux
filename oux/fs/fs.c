@@ -1581,8 +1581,14 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
         goto Error_0;
     char *name_ = kmalloc( H_oux_E_fs_Q_device_S[ device_i ].sector_size, E_oux_E_fs_S_alloc_flags );
     long n = strncpy_from_user( name_, name, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
+    if( n == -EFAULT )
+    {   error = -EFAULT;
+        kfree( name_ );
+        goto Error_0;
+    }
     if( n == H_oux_E_fs_Q_device_S[ device_i ].sector_size )
     {   error = -ENAMETOOLONG;
+        kfree( name_ );
         goto Error_0;
     }
     if( n + 1 != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
@@ -1597,7 +1603,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
     uint64_t parent = H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent;
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -1605,7 +1611,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
         }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -1680,8 +1686,14 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
         goto Error_0;
     char *name_ = kmalloc( H_oux_E_fs_Q_device_S[ device_i ].sector_size, E_oux_E_fs_S_alloc_flags );
     long n = strncpy_from_user( name_, name, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
+    if( n == -EFAULT )
+    {   error = -EFAULT;
+        kfree( name_ );
+        goto Error_0;
+    }
     if( n == H_oux_E_fs_Q_device_S[ device_i ].sector_size )
     {   error = -ENAMETOOLONG;
+        kfree( name_ );
         goto Error_0;
     }
     if( n + 1 != H_oux_E_fs_Q_device_S[ device_i ].sector_size )
@@ -1696,7 +1708,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
     uint64_t parent = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent;
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -1704,7 +1716,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
         }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, name_ )
         )
         {   error = -EEXIST;
             kfree( name_ );
@@ -1749,14 +1761,14 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_I_move
     const char *name_ = H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name;
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, name_ )
         )
         {   error = -EEXIST;
             goto Error_0;
         }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, name_ )
         )
         {   error = -EEXIST;
             goto Error_0;
@@ -1795,14 +1807,14 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_move
     const char *name_ = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name;
     for( uint64_t directory_i = 0; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, name_ )
         )
         {   error = -EEXIST;
             goto Error_0;
         }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == parent
-        && !strcmp( name_, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name )
+        && !strcmp( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, name_ )
         )
         {   error = -EEXIST;
             goto Error_0;
