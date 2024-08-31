@@ -22,66 +22,6 @@ extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
 static
 bool
-H_oux_E_fs_Q_block_T_cross( unsigned device_i
-, const struct H_oux_E_fs_Z_block *block_1
-, const struct H_oux_E_fs_Z_block *block_2
-){  if( block_1->location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
-        if( block_2->location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
-        {   if(( block_2->sector >= block_1->sector
-              && block_2->sector < block_1->sector + block_1->location.sectors.n
-            )
-            || ( block_2->sector + block_2->location.sectors.n >= block_1->sector
-              && block_2->sector + block_2->location.sectors.n
-                < block_1->sector + block_1->location.sectors.n
-            )
-            || ( block_2->sector == block_1->sector - 1
-              && block_2->location.sectors.post + block_1->location.sectors.pre > H_oux_E_fs_Q_device_S[ device_i ].sector_size
-            )
-            || ( block_1->sector == block_2->sector - 1
-              && block_1->location.sectors.post + block_2->location.sectors.pre > H_oux_E_fs_Q_device_S[ device_i ].sector_size
-            ))
-                return yes;
-        }else
-        {   if(( block_2->sector == block_1->sector - 1
-              && block_2->location.in_sector.start + block_2->location.in_sector.size
-                > H_oux_E_fs_Q_device_S[ device_i ].sector_size - block_1->location.sectors.pre
-            )
-            || ( block_2->sector >= block_1->sector
-              && block_2->sector < block_1->sector + block_1->location.sectors.n
-            )
-            || ( block_2->sector == block_1->sector + block_1->location.sectors.n
-              && block_2->location.in_sector.start < block_1->location.sectors.post
-            ))
-                return yes;
-        }
-    else
-        if( block_2->location_type == H_oux_E_fs_Z_block_Z_location_S_sectors )
-        {   if(( block_1->sector == block_2->sector - 1
-              && block_1->location.in_sector.start + block_1->location.in_sector.size
-                > H_oux_E_fs_Q_device_S[ device_i ].sector_size - block_2->location.sectors.pre
-            )
-            || ( block_1->sector >= block_2->sector
-              && block_1->sector < block_2->sector + block_2->location.sectors.n
-            )
-            || ( block_1->sector == block_2->sector + block_2->location.sectors.n
-              && block_1->location.in_sector.start < block_2->location.sectors.post
-            ))
-                return yes;
-        }else
-        {   if( block_2->sector == block_1->sector
-            && (( block_2->location.in_sector.start >= block_1->location.in_sector.start
-                && block_2->location.in_sector.start < block_1->location.in_sector.start + block_1->location.in_sector.size
-              )
-              || ( block_2->location.in_sector.start + block_2->location.in_sector.size > block_1->location.in_sector.start
-                && block_2->location.in_sector.start + block_2->location.in_sector.size
-                  <= block_1->location.in_sector.start + block_1->location.in_sector.size
-            )))
-                return yes;
-        }
-    return no;
-}
-static
-bool
 H_oux_E_fs_Q_file_T_block_cross( unsigned device_i
 , uint64_t file_i
 ){  if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
@@ -831,7 +771,8 @@ End_loop:;
                 }
             }while( data != sector
               + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i_read ].location.in_sector.start
-              + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i_read ].location.in_sector.size );
+              + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i_read ].location.in_sector.size
+            );
         }
     }
     if( ~continue_from )
@@ -3467,6 +3408,11 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         kfree( name_ );
         goto Error_0;
     }
+    if( !n )
+    {   error = -EINVAL;
+        kfree( name_ );
+        goto Error_0;
+    }
     if( n == H_oux_E_fs_Q_device_S[ device_i ].sector_size )
     {   error = -ENAMETOOLONG;
         kfree( name_ );
@@ -3614,6 +3560,11 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
     long n = strncpy_from_user( name_, name, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
     if( n == -EFAULT )
     {   error = -EFAULT;
+        kfree( name_ );
+        goto Error_0;
+    }
+    if( !n )
+    {   error = -EINVAL;
         kfree( name_ );
         goto Error_0;
     }

@@ -9,6 +9,7 @@
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
 //TODO Co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
+//TODO Postarać się zrobić ‘rollback’ operacji, których niepowodzenie obecnie powoduje “inconsistent”.
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define E_oux_E_fs_S_alloc_flags        GFP_KERNEL
@@ -81,6 +82,7 @@ struct H_oux_E_fs_Q_device_Z
 };
 //==============================================================================
 int H_oux_E_fs_Q_device_I_save(unsigned);
+bool H_oux_E_fs_Q_block_T_cross( unsigned, const struct H_oux_E_fs_Z_block *, const struct H_oux_E_fs_Z_block * );
 uint64_t H_oux_E_fs_Z_start_n_R_size( unsigned, uint64_t, uint64_t );
 uint64_t H_oux_E_fs_Q_free_table_R( unsigned, uint64_t );
 int H_oux_E_fs_Q_directory_R( unsigned, uint64_t, uint64_t * );
