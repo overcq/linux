@@ -93,5 +93,5 @@ int H_oux_E_fs_Q_free_table_I_unite( unsigned, const struct H_oux_E_fs_Z_block *
 int H_oux_E_fs_Q_directory_file_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, uint64_t * );
 int H_oux_E_fs_Q_block_table_I_append_truncate( unsigned, int64_t );
 int H_oux_E_fs_Z_start_n_I_block_append( unsigned, uint64_t, uint64_t *, uint64_t *, uint64_t *, int64_t *, uint64_t, uint64_t * );
-int H_oux_E_fs_Z_start_n_I_block_truncate( unsigned, uint64_t, uint64_t, uint64_t * );
+int H_oux_E_fs_Z_start_n_I_block_truncate( unsigned, uint64_t, uint64_t, uint64_t *, bool * );
 /******************************************************************************/

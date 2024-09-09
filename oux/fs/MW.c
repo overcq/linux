@@ -20,24 +20,6 @@ extern void *H_oux_E_fs_Q_device_S_holder;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
-static
-bool
-H_oux_E_fs_Q_file_T_block_cross( unsigned device_i
-, uint64_t file_i
-){  if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
-        for( uint64_t i = 0; i != H_oux_E_fs_Q_device_S[ device_i ].block_table_n; i++ )
-            for( uint64_t j = 0; j != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n; j++ )
-            {   if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + j == i )
-                    continue;
-                if( H_oux_E_fs_Q_block_T_cross( device_i
-                , &H_oux_E_fs_Q_device_S[ device_i ].block_table[i]
-                , &H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + j ]
-                ))
-                    return yes;
-            }
-    return no;
-}
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define H_oux_E_fs_Q_device_I_switch_item( type, item, end ) \
     if( data_i ) \
     {   do \
@@ -364,7 +346,7 @@ End_loop:;
                                                 error = -EIO;
                                                 goto Error_4;
                                             }
-                                            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
+                                            if( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
                                             && ( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre
                                               || !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
                                             ))
@@ -398,7 +380,7 @@ End_loop:;
                                               + H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.in_sector.size
                                               > H_oux_E_fs_Q_device_S[ device_i ].sector_size
                                             )
-                                            {   pr_err( "in sector end not less than sector: block_table_i=%llu\n", block_table_i );
+                                            {   pr_err( "in sector not less than sector: block_table_i=%llu\n", block_table_i );
                                                 error = -EIO;
                                                 goto Error_4;
                                             }
@@ -480,7 +462,7 @@ End_loop:;
                                                 error = -EIO;
                                                 goto Error_4;
                                             }
-                                            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
+                                            if( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
                                             && ( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre
                                               || !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
                                             ))
@@ -596,7 +578,7 @@ End_loop:;
                                                 error = -EIO;
                                                 goto Error_4;
                                             }
-                                            if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
+                                            if( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
                                             && ( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre
                                               || !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
                                             ))
@@ -722,7 +704,7 @@ End_loop:;
                                             error = -EIO;
                                             goto Error_4;
                                         }
-                                        if( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
+                                        if( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.n
                                         && ( !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.pre
                                           || !H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location.sectors.post
                                         ))
@@ -1964,10 +1946,6 @@ Next_sector:if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location_type ==
                                     error = -EIO;
                                     goto Error_7;
                                 }
-                                if( H_oux_E_fs_Q_file_T_block_cross( device_i, file_i ))
-                                {   error = -EIO;
-                                    goto Error_7;
-                                }
                                 p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].sector_size - data, E_oux_E_fs_S_alloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
@@ -2072,10 +2050,6 @@ Next_sector:if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location_type ==
                                 if( !~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
                                 {   pr_err( "block count empty: file_i=%llu\n", file_i );
                                     error = -EIO;
-                                    goto Error_7;
-                                }
-                                if( H_oux_E_fs_Q_file_T_block_cross( device_i, file_i ))
-                                {   error = -EIO;
                                     goto Error_7;
                                 }
                                 p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].sector_size - data, E_oux_E_fs_S_alloc_flags );
@@ -2186,10 +2160,6 @@ Next_sector:if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location_type ==
                                     error = -EIO;
                                     goto Error_7;
                                 }
-                                if( H_oux_E_fs_Q_file_T_block_cross( device_i, file_i ))
-                                {   error = -EIO;
-                                    goto Error_7;
-                                }
                                 p = kmalloc( sector + H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start + file_table_i ].location.sectors.post - data, E_oux_E_fs_S_alloc_flags );
                                 if( !p )
                                 {   error = -ENOMEM;
@@ -2297,10 +2267,6 @@ Next_sector:if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location_type ==
                             )
                             {   pr_err( "block start empty: file_i=%llu\n", file_i );
                                 error = -EIO;
-                                goto Error_7;
-                            }
-                            if( H_oux_E_fs_Q_file_T_block_cross( device_i, file_i ))
-                            {   error = -EIO;
                                 goto Error_7;
                             }
                             p = kmalloc( sector
@@ -2544,6 +2510,7 @@ End_loop:;
                                 {   block_table_i++;
                                     if( block_table_i == H_oux_E_fs_Q_device_S[ device_i ].block_table_n ) // Sprawdzenie na czas testów.
                                     {   pr_err( "block table overflow\n" );
+                                        error = -EIO;
                                         goto Error_0;
                                     }
                                     continue_from = 0;
@@ -2609,6 +2576,7 @@ End_loop:;
                                 {   block_table_i++;
                                     if( block_table_i == H_oux_E_fs_Q_device_S[ device_i ].block_table_n ) // Sprawdzenie na czas testów.
                                     {   pr_err( "block table overflow\n" );
+                                        error = -EIO;
                                         goto Error_0;
                                     }
                                     continue_from = 0;
@@ -2685,6 +2653,7 @@ End_loop:;
                                 {   block_table_i++;
                                     if( block_table_i == H_oux_E_fs_Q_device_S[ device_i ].block_table_n ) // Sprawdzenie na czas testów.
                                     {   pr_err( "block table overflow\n" );
+                                        error = -EIO;
                                         goto Error_0;
                                     }
                                     continue_from = 0;
@@ -2761,8 +2730,9 @@ End_loop:;
                             {   block_table_i++;
                                 if( block_table_i == H_oux_E_fs_Q_device_S[ device_i ].block_table_n ) // Sprawdzenie na czas testów.
                                 {   pr_err( "block table overflow\n" );
-                                        goto Error_0;
-                                    }
+                                    error = -EIO;
+                                    goto Error_0;
+                                }
                                 continue_from = 0;
                             }
                             H_oux_E_fs_Q_device_I_switch_item( uint64_t, H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].sector
@@ -2836,6 +2806,7 @@ End_loop:;
         }
         if( ~continue_from ) // Sprawdzenie na czas testów.
         {   pr_err( "block table underflow\n" );
+            error = -EIO;
             goto Error_0;
         }
         H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = ~0ULL;
@@ -3325,12 +3296,14 @@ Error_0:
 }
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
 , unsigned, device_i
-){  if( device_i >= H_oux_E_fs_Q_device_S_n )
-        return -EINVAL;
+){  int error = 0;
     write_lock( &E_oux_E_fs_S_rw_lock );
-    int error = 0;
+    if( device_i >= H_oux_E_fs_Q_device_S_n )
+    {   error = -EINVAL;
+        goto Error_0;
+    }
     if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   pr_crit( "filesystem inconsistent, not saving\n" );
+    {   pr_crit( "filesystem inconsistent, not saving: device_i=%u\n", device_i );
         error = -EIO;
         goto Error_1;
     }
@@ -3379,10 +3352,12 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
 , uint64_t, parent
 , const char __user *, name
 , uint64_t __user *, uid
-){  if( device_i >= H_oux_E_fs_Q_device_S_n )
-        return -EINVAL;
+){  int error = 0;
     write_lock( &E_oux_E_fs_S_rw_lock );
-    int error = 0;
+    if( device_i >= H_oux_E_fs_Q_device_S_n )
+    {   error = -EINVAL;
+        goto Error_0;
+    }
     if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
     {   error = -EIO;
         goto Error_0;
@@ -3504,10 +3479,12 @@ Error_0:
 SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
 , unsigned, device_i
 , uint64_t, uid
-){  if( device_i >= H_oux_E_fs_Q_device_S_n )
-        return -EINVAL;
+){  int error = 0;
     write_lock( &E_oux_E_fs_S_rw_lock );
-    int error = 0;
+    if( device_i >= H_oux_E_fs_Q_device_S_n )
+    {   error = -EINVAL;
+        goto Error_0;
+    }
     if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
     {   error = -EIO;
         goto Error_0;
@@ -3534,10 +3511,12 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
 , uint64_t, parent
 , const char __user *, name
 , uint64_t __user *, uid
-){  if( device_i >= H_oux_E_fs_Q_device_S_n )
-        return -EINVAL;
+){  int error = 0;
     write_lock( &E_oux_E_fs_S_rw_lock );
-    int error = 0;
+    if( device_i >= H_oux_E_fs_Q_device_S_n )
+    {   error = -EINVAL;
+        goto Error_0;
+    }
     if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
     {   error = -EIO;
         goto Error_0;
@@ -3661,10 +3640,12 @@ Error_0:
 SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
 , unsigned, device_i
 , uint64_t, uid
-){  if( device_i >= H_oux_E_fs_Q_device_S_n )
-        return -EINVAL;
+){  int error = 0;
     write_lock( &E_oux_E_fs_S_rw_lock );
-    int error = 0;
+    if( device_i >= H_oux_E_fs_Q_device_S_n )
+    {   error = -EINVAL;
+        goto Error_0;
+    }
     if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
     {   error = -EIO;
         goto Error_0;
