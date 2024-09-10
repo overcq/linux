@@ -1307,6 +1307,7 @@ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
 
 asmlinkage long sys_H_oux_E_fs_Q_device_M( const char __user * );
 asmlinkage long sys_H_oux_E_fs_Q_device_W(unsigned);
+asmlinkage long sys_H_oux_E_fs_Q_device_I_sync(unsigned);
 asmlinkage long sys_H_oux_E_fs_Q_directory_M( unsigned, uint64_t, const char __user * );
 asmlinkage long sys_H_oux_E_fs_Q_directory_W( unsigned, uint64_t );
 asmlinkage long sys_H_oux_E_fs_Q_file_M( unsigned, uint64_t, const char __user * );

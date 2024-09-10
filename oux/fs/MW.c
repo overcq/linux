@@ -3346,6 +3346,24 @@ Error_0:
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return error;
 }
+SYSCALL_DEFINE1( H_oux_E_fs_Q_device_I_sync
+, unsigned, device_i
+){  int error = 0;
+    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( device_i >= H_oux_E_fs_Q_device_S_n )
+    {   error = -EINVAL;
+        goto Error_0;
+    }
+    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
+    {   pr_crit( "filesystem inconsistent, not saving: device_i=%u\n", device_i );
+        error = -EIO;
+        goto Error_0;
+    }
+    error = H_oux_E_fs_Q_device_I_save( device_i );
+Error_0:
+    write_unlock( &E_oux_E_fs_S_rw_lock );
+    return error;
+}
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
 , unsigned, device_i
