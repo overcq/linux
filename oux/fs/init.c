@@ -38,15 +38,8 @@ static
 void
 __exit
 H_oux_E_fs_W( void
-){  int error = 0;
-    for( unsigned device_i = 0; device_i != H_oux_E_fs_Q_device_S_n; device_i++ )
-    {   if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-        {   pr_crit( "filesystem inconsistent, not saving: device_i=%u\n", device_i );
-            continue;
-        }
-        error = H_oux_E_fs_Q_device_I_save( device_i );
-        if(error)
-            continue;
+){  for( unsigned device_i = 0; device_i != H_oux_E_fs_Q_device_S_n; device_i++ )
+    {   H_oux_E_fs_Q_device_I_save( device_i );
         for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
             kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
         kfree( H_oux_E_fs_Q_device_S[ device_i ].file );

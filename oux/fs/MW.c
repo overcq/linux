@@ -2334,7 +2334,6 @@ Next_sector:if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location_type ==
     H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = ~0ULL;
     H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = ~0ULL;
     H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = ~0ULL;
-    H_oux_E_fs_Q_device_S[ device_i ].inconsistent = no;
     kfree(sector);
     write_unlock( &E_oux_E_fs_S_rw_lock );
     return device_i;
@@ -3302,11 +3301,6 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
     {   error = -EINVAL;
         goto Error_0;
     }
-    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   pr_crit( "filesystem inconsistent, not saving: device_i=%u\n", device_i );
-        error = -EIO;
-        goto Error_1;
-    }
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( ~H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_pid )
         {   pr_err( "file locked: file_i=%llu\n", file_i );
@@ -3316,7 +3310,6 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
     error = H_oux_E_fs_Q_device_I_save( device_i );
     if(error)
         goto Error_0;
-Error_1:
     // Wyrzucenie z pamięci operacyjnej struktur systemu plików.
     for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
@@ -3337,7 +3330,7 @@ Error_1:
         if( !p )
         {   H_oux_E_fs_Q_device_S[ device_i ].bdev_file = 0;
             error = -ENOMEM;
-            goto Error_1;
+            goto Error_0;
         }
         H_oux_E_fs_Q_device_S = p;
         H_oux_E_fs_Q_device_S_n = device_i_;
@@ -3352,11 +3345,6 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_I_sync
     write_lock( &E_oux_E_fs_S_rw_lock );
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
-        goto Error_0;
-    }
-    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   pr_crit( "filesystem inconsistent, not saving: device_i=%u\n", device_i );
-        error = -EIO;
         goto Error_0;
     }
     error = H_oux_E_fs_Q_device_I_save( device_i );
@@ -3374,10 +3362,6 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
     write_lock( &E_oux_E_fs_S_rw_lock );
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
-        goto Error_0;
-    }
-    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   error = -EIO;
         goto Error_0;
     }
     if( !~H_oux_E_fs_Q_device_S[ device_i ].directory_n )
@@ -3449,8 +3433,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
     , &H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from
     );
     if(error)
-    {   H_oux_E_fs_Q_device_S[ device_i ].inconsistent = yes;
-        p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_alloc_flags );
+    {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_alloc_flags );
         if( !p )
         {   error = -ENOMEM;
             kfree( name_ );
@@ -3503,10 +3486,6 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
     {   error = -EINVAL;
         goto Error_0;
     }
-    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   error = -EIO;
-        goto Error_0;
-    }
     uint64_t directory_i;
     error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
     if(error)
@@ -3533,10 +3512,6 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
     write_lock( &E_oux_E_fs_S_rw_lock );
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
-        goto Error_0;
-    }
-    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   error = -EIO;
         goto Error_0;
     }
     if( !~H_oux_E_fs_Q_device_S[ device_i ].file_n )
@@ -3607,8 +3582,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
     , &H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from
     );
     if(error)
-    {   H_oux_E_fs_Q_device_S[ device_i ].inconsistent = yes;
-        p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_alloc_flags );
+    {   p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_alloc_flags );
         if( !p )
         {   error = -ENOMEM;
             kfree( name_ );
@@ -3662,10 +3636,6 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
     write_lock( &E_oux_E_fs_S_rw_lock );
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
-        goto Error_0;
-    }
-    if( H_oux_E_fs_Q_device_S[ device_i ].inconsistent )
-    {   error = -EIO;
         goto Error_0;
     }
     uint64_t file_i;
