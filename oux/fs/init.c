@@ -54,7 +54,7 @@ H_oux_E_fs_W( void
 }
 //==============================================================================
 MODULE_DESCRIPTION( "OUX filesystem" );
-MODULE_AUTHOR( "Janusz Augustyński <overcq@linux.pl>" );
+MODULE_AUTHOR( "Janusz Augustyński <overcq@int.pl>" );
 MODULE_LICENSE( "GPL" );
 //==============================================================================
 module_init( H_oux_E_fs_M )

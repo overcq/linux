@@ -6466,7 +6466,7 @@ unlock:
 out:
 	return -EINVAL;
 }
-EXPORT_SYMBOL(follow_pte);
+EXPORT_SYMBOL(follow_pfnmap_start);
 
 /**
  * follow_pfnmap_end(): End a follow_pfnmap_start() process
@@ -6482,7 +6482,7 @@ void follow_pfnmap_end(struct follow_pfnmap_args *args)
 	if (args->ptep)
 		pte_unmap(args->ptep);
 }
-EXPORT_SYMBOL_GPL(follow_pfnmap_end);
+EXPORT_SYMBOL(follow_pfnmap_end);
 
 #ifdef CONFIG_HAVE_IOREMAP_PROT
 /**
