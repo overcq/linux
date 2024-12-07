@@ -820,6 +820,7 @@ enum dc_status dcn401_enable_stream_timing(
 	int opp_cnt = 1;
 	int opp_inst[MAX_PIPES] = {0};
 	struct pipe_ctx *opp_heads[MAX_PIPES] = {0};
+	struct dc_crtc_timing patched_crtc_timing = stream->timing;
 	bool manual_mode;
 	unsigned int tmds_div = PIXEL_RATE_DIV_NA;
 	unsigned int unused_div = PIXEL_RATE_DIV_NA;
@@ -874,9 +875,13 @@ enum dc_status dcn401_enable_stream_timing(
 	if (dc->hwseq->funcs.PLAT_58856_wa && (!dc_is_dp_signal(stream->signal)))
 		dc->hwseq->funcs.PLAT_58856_wa(context, pipe_ctx);
 
+	/* if we are borrowing from hblank, h_addressable needs to be adjusted */
+	if (dc->debug.enable_hblank_borrow)
+		patched_crtc_timing.h_addressable = patched_crtc_timing.h_addressable + pipe_ctx->hblank_borrow;
+
 	pipe_ctx->stream_res.tg->funcs->program_timing(
 			pipe_ctx->stream_res.tg,
-			&stream->timing,
+			&patched_crtc_timing,
 			pipe_ctx->pipe_dlg_param.vready_offset,
 			pipe_ctx->pipe_dlg_param.vstartup_start,
 			pipe_ctx->pipe_dlg_param.vupdate_offset,
@@ -1488,6 +1493,10 @@ void dcn401_prepare_bandwidth(struct dc *dc,
 					&context->bw_ctx.bw.dcn.watermarks,
 					dc->res_pool->ref_clocks.dchub_ref_clock_inKhz / 1000,
 					false);
+	/* update timeout thresholds */
+	if (hubbub->funcs->program_arbiter) {
+		dc->wm_optimized_required |= hubbub->funcs->program_arbiter(hubbub, &context->bw_ctx.bw.dcn.arb_regs, false);
+	}
 
 	/* decrease compbuf size */
 	if (hubbub->funcs->program_compbuf_segments) {
@@ -1529,6 +1538,10 @@ void dcn401_optimize_bandwidth(
 					&context->bw_ctx.bw.dcn.watermarks,
 					dc->res_pool->ref_clocks.dchub_ref_clock_inKhz / 1000,
 					true);
+	/* update timeout thresholds */
+	if (hubbub->funcs->program_arbiter) {
+		hubbub->funcs->program_arbiter(hubbub, &context->bw_ctx.bw.dcn.arb_regs, true);
+	}
 
 	if (dc->clk_mgr->dc_mode_softmax_enabled)
 		if (dc->clk_mgr->clks.dramclk_khz > dc->clk_mgr->bw_params->dc_mode_softmax_memclk * 1000 &&
@@ -1553,11 +1566,6 @@ void dcn401_optimize_bandwidth(
 					pipe_ctx->plane_res.hubp->funcs->program_extended_blank(pipe_ctx->plane_res.hubp,
 						pipe_ctx->dlg_regs.min_dst_y_next_start);
 		}
-	}
-
-	/* update timeout thresholds */
-	if (hubbub->funcs->program_timeout_thresholds) {
-		hubbub->funcs->program_timeout_thresholds(hubbub, &context->bw_ctx.bw.dcn.arb_regs);
 	}
 }
 
