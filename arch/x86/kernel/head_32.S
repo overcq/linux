@@ -248,7 +248,7 @@ SYM_FUNC_START(startup_32_smp)
 	movl %edx,X86_VENDOR_ID+4	# next 4 chars
 	movl %ecx,X86_VENDOR_ID+8	# last 4 chars
 
-	orl %eax,%eax			# do we have processor info as well?
+	testl %eax,%eax			# do we have processor info as well?
 	je .Lis486
 
 	movl $1,%eax		# Use the CPUID instruction to get CPU type
