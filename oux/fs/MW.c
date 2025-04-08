@@ -267,7 +267,7 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
                     }
         }
     }while( data != sector + H_oux_E_fs_Q_device_S[ device_i ].sector_size );
-End_loop:;
+End_loop:
     for( uint64_t block_table_i_read = 0; block_table_i_read != H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n; block_table_i_read++ ) // Czyta wszystkie pozostałe wpisy pliku tablicy bloków.
     {   if( block_table_i_read > block_table_i ) //NDFN Przemyśleć i zagwarantować, by zawsze starczało.
         {   pr_err( "read beyond available: block_table_i=%llu\n", block_table_i );
