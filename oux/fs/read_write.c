@@ -28,7 +28,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock
     )
         return -EINVAL;
     int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -53,7 +54,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_lock
         H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].lock_read = no;
     }
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -73,7 +74,8 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
     || !access_ok( data, n_ )
     )
         return -EINVAL;
-    read_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_read_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     uint64_t file_i;
     error = H_oux_E_fs_Q_file_R( device_i, uid, &file_i );
     if(error)
@@ -193,7 +195,7 @@ Loop_end:
 Error_1:
     kfree(sector);
 Error_0:
-    read_unlock( &E_oux_E_fs_S_rw_lock );
+    up_read( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
@@ -210,7 +212,8 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
     || !access_ok( data, n_ )
     )
         return -EINVAL;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -782,7 +785,7 @@ Loop_end:
 Error_1:
     kfree(sector);
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 /******************************************************************************/

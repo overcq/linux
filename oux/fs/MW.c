@@ -49,7 +49,8 @@ extern unsigned H_oux_E_fs_Q_device_S_n;
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_M
 , const char __user *, pathname
 ){  const unsigned max_path = 4096, default_sector_size = 4096;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     char *pathname_ = kmalloc( max_path, E_oux_E_fs_S_alloc_flags );
     int error;
     long count = strncpy_from_user( pathname_, pathname, max_path );
@@ -2335,7 +2336,7 @@ Next_sector:if( H_oux_E_fs_Q_device_S[ device_i ].free_table[i].location_type ==
     H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = ~0ULL;
     H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = ~0ULL;
     kfree(sector);
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return device_i;
 Error_7:
     for( uint64_t file_i_ = 0; file_i_ != file_i; file_i_++ )
@@ -2371,7 +2372,7 @@ Error_1:
         H_oux_E_fs_Q_device_S_n = device_i_;
     }
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -3296,7 +3297,8 @@ Error_0:
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
 , unsigned, device_i
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -3336,20 +3338,21 @@ SYSCALL_DEFINE1( H_oux_E_fs_Q_device_W
         H_oux_E_fs_Q_device_S_n = device_i_;
     }
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE1( H_oux_E_fs_Q_device_I_sync
 , unsigned, device_i
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
     }
     error = H_oux_E_fs_Q_device_I_save( device_i );
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3359,7 +3362,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
 , const char __user *, name
 , uint64_t __user *, uid
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -3474,14 +3478,15 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_M
         H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = directory_i;
     error = put_user( uid_, uid );
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
 , unsigned, device_i
 , uint64_t, uid
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -3499,7 +3504,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
     }
     H_oux_E_fs_Q_device_S[ device_i ].directory = p;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -3509,7 +3514,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
 , const char __user *, name
 , uint64_t __user *, uid
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -3626,14 +3632,15 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_M
         H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
     error = put_user( uid_, uid );
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
 , unsigned, device_i
 , uint64_t, uid
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -3686,7 +3693,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
     }
     H_oux_E_fs_Q_device_S[ device_i ].file = p;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 /******************************************************************************/

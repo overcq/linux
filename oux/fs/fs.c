@@ -1547,7 +1547,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_directory
 , uint64_t __user *, n
 , uint64_t __user *, list
 ){  int error = 0;
-    read_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_read_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1591,7 +1592,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_directory
 Error_1:
     kfree( list_ );
 Error_0:
-    read_unlock( &E_oux_E_fs_S_rw_lock );
+    up_read( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_file
@@ -1600,7 +1601,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_file
 , uint64_t __user *, n
 , uint64_t __user *, list
 ){  int error = 0;
-    read_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_read_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1644,7 +1646,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_file
 Error_1:
     kfree( list_ );
 Error_0:
-    read_unlock( &E_oux_E_fs_S_rw_lock );
+    up_read( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name
@@ -1653,7 +1655,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name
 , uint64_t __user *, n
 , char __user *, name
 ){  int error = 0;
-    read_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_read_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1674,7 +1677,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name
         }
     error = put_user( n__, n );
 Error_0:
-    read_unlock( &E_oux_E_fs_S_rw_lock );
+    up_read( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
@@ -1682,7 +1685,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
 , uint64_t, uid
 , const char __user *, name
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1750,7 +1754,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_P_name
     if( H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from > directory_i )
         H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = directory_i;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name
@@ -1759,7 +1763,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name
 , uint64_t __user *, n
 , char __user *, name
 ){  int error = 0;
-    read_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_read_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1780,7 +1785,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name
         }
     error = put_user( n__, n );
 Error_0:
-    read_unlock( &E_oux_E_fs_S_rw_lock );
+    up_read( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
@@ -1788,7 +1793,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
 , uint64_t, uid
 , const char __user *, name
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1856,7 +1862,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_P_name
     if( H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from > file_i )
         H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -1865,7 +1871,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_R_size
 , uint64_t, uid
 , uint64_t __user *, n
 ){  int error = 0;
-    read_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_read_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1877,7 +1884,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_R_size
     uint64_t n_ = H_oux_E_fs_Z_start_n_R_size( device_i, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n );
     error = put_user( n_, n );
 Error_0:
-    read_unlock( &E_oux_E_fs_S_rw_lock );
+    up_read( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -1886,7 +1893,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_I_move
 , uint64_t, uid
 , uint64_t, parent
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1922,7 +1930,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_I_move
     }
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent = parent;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_move
@@ -1930,7 +1938,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_move
 , uint64_t, uid
 , uint64_t, parent
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1966,7 +1975,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_move
     }
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent = parent;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 //------------------------------------------------------------------------------
@@ -1975,7 +1984,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_truncate
 , uint64_t, uid
 , uint64_t, size
 ){  int error = 0;
-    write_lock( &E_oux_E_fs_S_rw_lock );
+    if( down_write_killable( &E_oux_E_fs_S_rw_lock ))
+        return -ERESTARTSYS;
     if( device_i >= H_oux_E_fs_Q_device_S_n )
     {   error = -EINVAL;
         goto Error_0;
@@ -1991,7 +2001,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_truncate
         goto Error_0;
     }
     uint64_t size_orig = H_oux_E_fs_Z_start_n_R_size( device_i, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n );
-    if( size >= size_orig )
+    if( size > size_orig )
     {   error = -EINVAL;
         goto Error_0;
     }
@@ -2017,7 +2027,7 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_truncate
     if( error > 0 )
         error = -error;
 Error_0:
-    write_unlock( &E_oux_E_fs_S_rw_lock );
+    up_write( &E_oux_E_fs_S_rw_lock );
     return error;
 }
 /******************************************************************************/
