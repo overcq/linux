@@ -1332,7 +1332,7 @@ Loop_end:
     {   pr_crit( "some free blocks not counted, remount filesystem: device_i=%u\n", device_i );
         error = -error;
     }
-    if( block_delete_start != *block_n )
+    if( block_delete_start != H_oux_E_fs_Q_device_S[ device_i ].block_table_n )
     {   memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + block_start + block_delete_start
         , H_oux_E_fs_Q_device_S[ device_i ].block_table + block_start + *block_n
         , ( H_oux_E_fs_Q_device_S[ device_i ].block_table_n - ( block_start + *block_n )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table )
@@ -2006,27 +2006,29 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_truncate
     {   error = -EINVAL;
         goto Error_0;
     }
-    int64_t block_table_diff__;
-    error = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, size_orig - size
-    , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start, &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
-    , &block_table_diff__
-    );
-    while( block_table_diff__ )
-    {   uint64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff__ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
-        ? -block_table_diff__
-        : H_oux_E_fs_Q_device_S[ device_i ].block_table_size - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
-        H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
-        if( !block_table_diff_above )
-            break;
-        int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, block_table_diff_above
-        , 0, &H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n
+    if( size_orig - size )
+    {   int64_t block_table_diff__;
+        error = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, size_orig - size
+        , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start, &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
         , &block_table_diff__
         );
-        if( error_ )
-            error = error_;
+        while( block_table_diff__ )
+        {   int64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff__ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
+            ? -block_table_diff__
+            : H_oux_E_fs_Q_device_S[ device_i ].block_table_size - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
+            H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
+            if( block_table_diff_above <= 0 )
+                break;
+            int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, block_table_diff_above
+            , 0, &H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n
+            , &block_table_diff__
+            );
+            if( error_ )
+                error = error_;
+        }
+        if( error > 0 )
+            error = -error;
     }
-    if( error > 0 )
-        error = -error;
 Error_0:
     up_write( &E_oux_E_fs_S_rw_lock );
     return error;
