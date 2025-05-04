@@ -1361,7 +1361,7 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
     pr_info( "block_table_diff: %lld\n", block_table_diff );
     if( block_table_diff > 0 )
     {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size )
-        {   uint64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
+        {   int64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
             ? block_table_diff
             : H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
             int64_t block_table_diff_;
@@ -1377,7 +1377,7 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
             );
             if(error)
                 return error;
-            pr_info( "block_table_diff_above: %llu\n", block_table_diff_above );
+            pr_info( "block_table_diff_above: %lld\n", block_table_diff_above );
             pr_info( "block_table_diff_: %lld\n", block_table_diff_ );
             block_table_diff_ = count * internal_table_element_size - block_table_diff_;
             pr_info( "block_table_diff_: %lld\n", block_table_diff_ );
@@ -1386,7 +1386,7 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
                 block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff + count * internal_table_element_size - block_table_diff_ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
                 ? block_table_diff_
                 : H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff + count * internal_table_element_size - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
-                pr_info( "block_table_diff_above: %llu\n", block_table_diff_above );
+                pr_info( "block_table_diff_above: %lld\n", block_table_diff_above );
                 int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
                 , block_table_diff_above
                 , 0, &H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n
@@ -1399,8 +1399,8 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
                     ? -block_table_diff__
                     : H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff - block_table_diff_ - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
                     H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
-                    pr_info( "block_table_diff_above: %llu\n", block_table_diff_above );
-                    if( !block_table_diff_above )
+                    pr_info( "block_table_diff_above: %lld\n", block_table_diff_above );
+                    if( block_table_diff_above <= 0 )
                         break;
                     int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
                     , block_table_diff_above
@@ -1426,11 +1426,11 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
             if( error_ )
                 error = error_;
             while( block_table_diff__ )
-            {   uint64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff + block_table_diff__ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
+            {   int64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff + block_table_diff__ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
                 ? -block_table_diff__
                 : H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
                 H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
-                if( !block_table_diff_above )
+                if( block_table_diff_above <= 0 )
                     break;
                 int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, block_table_diff_above
                 , 0, &H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n
