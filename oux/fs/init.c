@@ -10,6 +10,7 @@
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/rwsem.h>
 #include <linux/slab.h>
 //==============================================================================
 #include "../lang.h"
@@ -24,7 +25,7 @@ static
 int
 __init
 H_oux_E_fs_M( void
-){  E_oux_E_fs_S_rw_lock = __RW_LOCK_UNLOCKED( E_oux_E_fs_S_rw_lock );
+){  init_rwsem( &E_oux_E_fs_S_rw_lock );
     H_oux_E_fs_Q_device_S_holder = kmalloc( 0, E_oux_E_fs_S_alloc_flags );
     if( !H_oux_E_fs_Q_device_S_holder )
         return -ENOMEM;
@@ -51,6 +52,7 @@ H_oux_E_fs_W( void
     }
     kfree( H_oux_E_fs_Q_device_S );
     kfree( H_oux_E_fs_Q_device_S_holder );
+    //exit_rwsem( &E_oux_E_fs_S_rw_lock );
 }
 //==============================================================================
 MODULE_DESCRIPTION( "OUX filesystem" );

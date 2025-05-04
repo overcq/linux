@@ -8,6 +8,7 @@
 *******************************************************************************/
 #include <linux/blkdev.h>
 #include <linux/fs.h>
+#include <linux/rwsem.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/syscalls.h>
@@ -15,7 +16,7 @@
 #include "../lang.h"
 #include "fs.h"
 //==============================================================================
-extern rwlock_t E_oux_E_fs_S_rw_lock;
+extern struct rw_semaphore E_oux_E_fs_S_rw_lock;
 extern void *H_oux_E_fs_Q_device_S_holder;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
