@@ -1527,7 +1527,7 @@ H_oux_E_fs_Q_directory_file_I_block_append_truncate( unsigned device_i
             ? -block_table_diff__
             : H_oux_E_fs_Q_device_S[ device_i ].block_table_size - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
             H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
-            if( !block_table_diff_above )
+            if( block_table_diff_above <= 0 )
                 break;
             int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
             , block_table_diff_above
