@@ -1571,9 +1571,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_directory
         {   if( n__ < n_ )
             {   void *p = krealloc_array( list_, n__ + 1, sizeof( *list_ ), E_oux_E_fs_S_alloc_flags );
                 if( !p )
-                {   kfree( list_ );
-                    error = -ENOMEM;
-                    goto Error_0;
+                {   error = -ENOMEM;
+                    goto Error_1;
                 }
                 list_ = p;
                 list_[ n__ ] = H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid;
@@ -1625,9 +1624,8 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_file
         {   if( n__ < n_ )
             {   void *p = krealloc_array( list_, n__ + 1, sizeof( *list_ ), E_oux_E_fs_S_alloc_flags );
                 if( !p )
-                {   kfree( list_ );
-                    error = -ENOMEM;
-                    goto Error_0;
+                {   error = -ENOMEM;
+                    goto Error_1;
                 }
                 list_ = p;
                 list_[ n__ ] = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].uid;
