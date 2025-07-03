@@ -6409,7 +6409,6 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(handle_mm_fault);
-EXPORT_SYMBOL(__vma_start_write);
 
 #ifndef __PAGETABLE_P4D_FOLDED
 /*
