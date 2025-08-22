@@ -19,7 +19,7 @@ struct mm_id {
 	int syscall_fd_map[STUB_MAX_FDS];
 };
 
-void __switch_mm(struct mm_id *mm_idp);
+void notify_mm_kill(int pid);
 
 void notify_mm_kill(int pid);
 

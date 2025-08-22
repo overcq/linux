@@ -192,7 +192,7 @@ static int axp20x_gpio_get_direction(struct gpio_chip *chip,
 static int axp20x_gpio_output(struct gpio_chip *chip, unsigned int offset,
 			      int value)
 {
-	return chip->set_rv(chip, offset, value);
+	return chip->set(chip, offset, value);
 }
 
 static int axp20x_gpio_set(struct gpio_chip *chip, unsigned int offset,
