@@ -4,6 +4,7 @@ use super::HasHrTimer;
 use super::HrTimer;
 use super::HrTimerCallback;
 use super::HrTimerHandle;
+use super::HrTimerMode;
 use super::HrTimerPointer;
 use super::Ktime;
 use super::RawHrTimerCallback;
@@ -64,9 +65,13 @@ where
     T: for<'a> HrTimerCallback<Pointer<'a> = Pin<Box<T, A>>>,
     A: crate::alloc::Allocator,
 {
+    type TimerMode = <T as HasHrTimer<T>>::TimerMode;
     type TimerHandle = BoxHrTimerHandle<T, A>;
 
-    fn start(self, expires: Ktime) -> Self::TimerHandle {
+    fn start(
+        self,
+        expires: <<T as HasHrTimer<T>>::TimerMode as HrTimerMode>::Expires,
+    ) -> Self::TimerHandle {
         // SAFETY:
         //  - We will not move out of this box during timer callback (we pass an
         //    immutable reference to the callback).

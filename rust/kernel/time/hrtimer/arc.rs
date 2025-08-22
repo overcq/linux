@@ -4,6 +4,7 @@ use super::HasHrTimer;
 use super::HrTimer;
 use super::HrTimerCallback;
 use super::HrTimerHandle;
+use super::HrTimerMode;
 use super::HrTimerPointer;
 use super::Ktime;
 use super::RawHrTimerCallback;
@@ -54,9 +55,13 @@ where
     T: HasHrTimer<T>,
     T: for<'a> HrTimerCallback<Pointer<'a> = Self>,
 {
+    type TimerMode = <T as HasHrTimer<T>>::TimerMode;
     type TimerHandle = ArcHrTimerHandle<T>;
 
-    fn start(self, expires: Ktime) -> ArcHrTimerHandle<T> {
+    fn start(
+        self,
+        expires: <<T as HasHrTimer<T>>::TimerMode as HrTimerMode>::Expires,
+    ) -> ArcHrTimerHandle<T> {
         // SAFETY:
         //  - We keep `self` alive by wrapping it in a handle below.
         //  - Since we generate the pointer passed to `start` from a valid

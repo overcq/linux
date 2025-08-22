@@ -578,8 +578,8 @@ static int sa1111_gpio_set(struct gpio_chip *gc, unsigned int offset, int value)
 	return 0;
 }
 
-static void sa1111_gpio_set_multiple(struct gpio_chip *gc, unsigned long *mask,
-	unsigned long *bits)
+static int sa1111_gpio_set_multiple(struct gpio_chip *gc, unsigned long *mask,
+				    unsigned long *bits)
 {
 	struct sa1111 *sachip = gc_to_sa1111(gc);
 	unsigned long flags;
@@ -597,6 +597,8 @@ static void sa1111_gpio_set_multiple(struct gpio_chip *gc, unsigned long *mask,
 	sa1111_gpio_modify(reg + SA1111_GPIO_PCDWR, (msk >> 12) & 255, val >> 12);
 	sa1111_gpio_modify(reg + SA1111_GPIO_PCSSR, (msk >> 12) & 255, val >> 12);
 	spin_unlock_irqrestore(&sachip->lock, flags);
+
+	return 0;
 }
 
 static int sa1111_gpio_to_irq(struct gpio_chip *gc, unsigned offset)
