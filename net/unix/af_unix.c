@@ -2800,13 +2800,6 @@ static int unix_stream_recv_urg(struct unix_stream_read_state *state)
 		}
 	}
 
-		if (oob_skb->prev != (struct sk_buff *)&sk->sk_receive_queue &&
-		    !unix_skb_len(oob_skb->prev)) {
-			read_skb = oob_skb->prev;
-			__skb_unlink(read_skb, &sk->sk_receive_queue);
-		}
-	}
-
 	spin_unlock(&sk->sk_receive_queue.lock);
 	unix_state_unlock(sk);
 

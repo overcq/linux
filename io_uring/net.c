@@ -84,10 +84,10 @@ struct io_sr_msg {
 	struct io_kiocb 		*notif;
 };
 
-enum sr_retry_flags {
+/*enum sr_retry_flags {
 	IO_SR_MSG_RETRY		= 1,
 	IO_SR_MSG_PARTIAL_MAP	= 2,
-};
+};*/
 
 /*
  * The UAPI flags are the lower 8 bits, as that's all sqe->ioprio will hold

@@ -1790,31 +1790,6 @@ static void madvise_finish_tlb(struct madvise_behavior *madv_behavior)
 		tlb_finish_mmu(madv_behavior->tlb);
 }
 
-static bool madvise_batch_tlb_flush(int behavior)
-{
-	switch (behavior) {
-	case MADV_DONTNEED:
-	case MADV_DONTNEED_LOCKED:
-	case MADV_FREE:
-		return true;
-	default:
-		return false;
-	}
-}
-
-static void madvise_init_tlb(struct madvise_behavior *madv_behavior,
-		struct mm_struct *mm)
-{
-	if (madvise_batch_tlb_flush(madv_behavior->behavior))
-		tlb_gather_mmu(madv_behavior->tlb, mm);
-}
-
-static void madvise_finish_tlb(struct madvise_behavior *madv_behavior)
-{
-	if (madvise_batch_tlb_flush(madv_behavior->behavior))
-		tlb_finish_mmu(madv_behavior->tlb);
-}
-
 static bool is_valid_madvise(unsigned long start, size_t len_in, int behavior)
 {
 	size_t len;
