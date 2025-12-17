@@ -101,7 +101,7 @@ void __vma_start_write(struct vm_area_struct *vma, unsigned int mm_lock_seq)
 		WARN_ON_ONCE(detached); /* vma should remain attached */
 	}
 }
-EXPORT_SYMBOL(__vma_start_write);
+EXPORT_SYMBOL_GPL(__vma_start_write);
 
 void vma_mark_detached(struct vm_area_struct *vma)
 {
