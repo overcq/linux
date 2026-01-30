@@ -8,7 +8,7 @@
 *******************************************************************************/
 //DFN Rozmiary fragmentów tablicy bloków na dysku zawsze są ustawione tak, że wpisy wypełniają je całe.
 //DFN Tablice bloków na dysku są posortowane według sektora, a następnie według lokalizacji w sektorze. Tablice plików i katalogów – według ‘uid’.
-//TODO Co do plików zwykłych pozostaje decyzja, jak ograniczać fagmentację, a nie zużywać nośnika na zapis danych.
+//TODO Co do plików zwykłych pozostaje decyzja, jak ograniczać fragmentację, a nie zużywać nośnika na zapis danych.
 //==============================================================================
 #define H_oux_E_fs_Q_device_S_ident     "OUXFS"
 #define E_oux_E_fs_S_alloc_flags        GFP_KERNEL
