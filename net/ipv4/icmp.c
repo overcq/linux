@@ -250,7 +250,8 @@ bool icmp_global_allow(struct net *net)
 	if (delta < HZ / 50)
 		return false;
 
-	incr = READ_ONCE(net->ipv4.sysctl_icmp_msgs_per_sec) * delta / HZ;
+	incr = READ_ONCE(net->ipv4.sysctl_icmp_msgs_per_sec);
+	incr = div_u64((u64)incr * delta, HZ);
 	if (!incr)
 		return false;
 
@@ -315,23 +316,29 @@ static bool icmpv4_xrlim_allow(struct net *net, struct rtable *rt,
 	struct dst_entry *dst = &rt->dst;
 	struct inet_peer *peer;
 	struct net_device *dev;
+	int peer_timeout;
 	bool rc = true;
 
 	if (!apply_ratelimit)
 		return true;
 
+	peer_timeout = READ_ONCE(net->ipv4.sysctl_icmp_ratelimit);
+	if (!peer_timeout)
+		goto out;
+
 	/* No rate limit on loopback */
 	rcu_read_lock();
 	dev = dst_dev_rcu(dst);
 	if (dev && (dev->flags & IFF_LOOPBACK))
-		goto out;
+		goto out_unlock;
 
 	peer = inet_getpeer_v4(net->ipv4.peers, fl4->daddr,
 			       l3mdev_master_ifindex_rcu(dev));
-	rc = inet_peer_xrlim_allow(peer,
-				   READ_ONCE(net->ipv4.sysctl_icmp_ratelimit));
-out:
+	rc = inet_peer_xrlim_allow(peer, peer_timeout);
+
+out_unlock:
 	rcu_read_unlock();
+out:
 	if (!rc)
 		__ICMP_INC_STATS(net, ICMP_MIB_RATELIMITHOST);
 	else
@@ -1072,10 +1079,12 @@ out:
 
 static bool icmp_tag_validation(int proto)
 {
+	const struct net_protocol *ipprot;
 	bool ok;
 
 	rcu_read_lock();
-	ok = rcu_dereference(inet_protos[proto])->icmp_strict_tag_validation;
+	ipprot = rcu_dereference(inet_protos[proto]);
+	ok = ipprot ? ipprot->icmp_strict_tag_validation : false;
 	rcu_read_unlock();
 	return ok;
 }
