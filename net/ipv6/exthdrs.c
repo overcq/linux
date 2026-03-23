@@ -379,6 +379,10 @@ static int ipv6_srh_rcv(struct sk_buff *skb)
 	hdr = (struct ipv6_sr_hdr *)skb_transport_header(skb);
 
 	idev = __in6_dev_get(skb->dev);
+	if (!idev) {
+		kfree_skb(skb);
+		return -1;
+	}
 
 	accept_seg6 = min(READ_ONCE(net->ipv6.devconf_all->seg6_enabled),
 			  READ_ONCE(idev->cnf.seg6_enabled));
@@ -929,6 +933,11 @@ static bool ipv6_hop_ioam(struct sk_buff *skb, int optoff)
 		/* Malformed Pre-allocated Trace header */
 		trace = (struct ioam6_trace_hdr *)((u8 *)hdr + sizeof(*hdr));
 		if (hdr->opt_len < 2 + sizeof(*trace) + trace->remlen * 4)
+			goto drop;
+
+		/* Inconsistent Pre-allocated Trace header */
+		if (trace->nodelen !=
+		    ioam6_trace_compute_nodelen(be32_to_cpu(trace->type_be32)))
 			goto drop;
 
 		/* Ignore if the IOAM namespace is unknown */
