@@ -1586,7 +1586,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_directory
         n__ = n_;
     if( n__ )
         if( copy_to_user( list, list_, n__ * sizeof( *list_ )))
-        {   error = -EPERM;
+        {   error = -EFAULT;
             goto Error_1;
         }
 Error_1:
@@ -1619,7 +1619,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_file
         goto Error_0;
     uint64_t *list_ = kmalloc_array( 0, sizeof( *list_ ), E_oux_E_fs_S_alloc_flags );
     uint64_t n__ = 0;
-    for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; file_i++ )
+    for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
         if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == uid )
         {   if( n__ < n_ )
             {   void *p = krealloc_array( list_, n__ + 1, sizeof( *list_ ), E_oux_E_fs_S_alloc_flags );
@@ -1639,7 +1639,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_I_list_file
         n__ = n_;
     if( n__ )
         if( copy_to_user( list, list_, n__ * sizeof( *list_ )))
-        {   error = -EPERM;
+        {   error = -EFAULT;
             goto Error_1;
         }
 Error_1:
@@ -1671,7 +1671,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_directory_R_name
         goto Error_0;
     if( n_ >= n__ )
         if( copy_to_user( name, H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name, n__ ))
-        {   error = -EPERM;
+        {   error = -EFAULT;
             goto Error_0;
         }
     error = put_user( n__, n );
@@ -1779,7 +1779,7 @@ SYSCALL_DEFINE4( H_oux_E_fs_Q_file_R_name
         goto Error_0;
     if( n_ >= n__ )
         if( copy_to_user( name, H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name, n__ ))
-        {   error = -EPERM;
+        {   error = -EFAULT;
             goto Error_0;
         }
     error = put_user( n__, n );
