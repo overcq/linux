@@ -1928,6 +1928,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_directory_I_move
         goto Error_0;
     }
     H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent = parent;
+    if( H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from > directory_i )
+        H_oux_E_fs_Q_device_S[ device_i ].directory_table_changed_from = directory_i;
 Error_0:
     up_write( &E_oux_E_fs_S_rw_lock );
     return error;
@@ -1973,6 +1975,8 @@ SYSCALL_DEFINE3( H_oux_E_fs_Q_file_I_move
         goto Error_0;
     }
     H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent = parent;
+    if( H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from > file_i )
+        H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
 Error_0:
     up_write( &E_oux_E_fs_S_rw_lock );
     return error;
