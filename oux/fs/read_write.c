@@ -105,18 +105,16 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                     error = -EIO;
                     goto Error_1;
                 }
-                uint64_t n__ = H_oux_J_min( n_, block->location.sectors.pre );
-                if( n__ > pos )
-                    n__ -= pos;
+                uint64_t n__ = H_oux_J_min( n_, block->location.sectors.pre - pos );
                 if( copy_to_user( data + data_p, sector + ( H_oux_E_fs_Q_device_S[ device_i ].sector_size - block->location.sectors.pre ) + pos, n__ ))
                 {   error = -EFAULT;
                     goto Error_1;
                 }
                 data_p += n__;
                 n_ -= n__;
+                pos = 0;
                 if( !n_ )
                     break;
-                pos = 0;
             }else
                 pos -= block->location.sectors.pre;
             for( uint64_t sector_i = 0; sector_i != block->location.sectors.n; sector_i++ )
@@ -128,18 +126,16 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                         error = -EIO;
                         goto Error_1;
                     }
-                    uint64_t n__ = H_oux_J_min( n_, H_oux_E_fs_Q_device_S[ device_i ].sector_size );
-                    if( n__ > pos )
-                        n__ -= pos;
+                    uint64_t n__ = H_oux_J_min( n_, H_oux_E_fs_Q_device_S[ device_i ].sector_size - pos );
                     if( copy_to_user( data + data_p, sector + pos, n__ ))
                     {   error = -EFAULT;
                         goto Error_1;
                     }
                     data_p += n__;
                     n_ -= n__;
+                    pos = 0;
                     if( !n_ )
                         goto Loop_end;
-                    pos = 0;
                 }else
                     pos -= H_oux_E_fs_Q_device_S[ device_i ].sector_size;
             }
@@ -151,18 +147,16 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                     error = -EIO;
                     goto Error_1;
                 }
-                uint64_t n__ = H_oux_J_min( n_, block->location.sectors.post );
-                if( n__ > pos )
-                    n__ -= pos;
+                uint64_t n__ = H_oux_J_min( n_, block->location.sectors.post - pos );
                 if( copy_to_user( data + data_p, sector + pos, n__ ))
                 {   error = -EFAULT;
                     goto Error_1;
                 }
                 data_p += n__;
                 n_ -= n__;
+                pos = 0;
                 if( !n_ )
                     break;
-                pos = 0;
             }else
                 pos -= block->location.sectors.post;
         }else
@@ -174,18 +168,16 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_read
                     error = -EIO;
                     goto Error_1;
                 }
-                uint64_t n__ = H_oux_J_min( n_, block->location.in_sector.size );
-                if( n__ > pos )
-                    n__ -= pos;
+                uint64_t n__ = H_oux_J_min( n_, block->location.in_sector.size - pos );
                 if( copy_to_user( data + data_p, sector + block->location.in_sector.start + pos, n__ ))
                 {   error = -EFAULT;
                     goto Error_1;
                 }
                 data_p += n__;
                 n_ -= n__;
+                pos = 0;
                 if( !n_ )
                     break;
-                pos = 0;
             }else
                 pos -= block->location.in_sector.size;
     }
@@ -260,9 +252,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 }
                 data_p += n__;
                 n_ -= n__;
+                pos = 0;
                 if( !n_ )
                     break;
-                pos = 0;
             }else
                 pos -= block->location.sectors.pre;
             for( uint64_t sector_i = 0; sector_i != block->location.sectors.n; sector_i++ )
@@ -288,9 +280,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                     }
                     data_p += n__;
                     n_ -= n__;
-                    if( !n_ )
-                        break;
                     pos = 0;
+                    if( !n_ )
+                        goto Loop_end;
                 }else
                     pos -= H_oux_E_fs_Q_device_S[ device_i ].sector_size;
             }
@@ -316,9 +308,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 }
                 data_p += n__;
                 n_ -= n__;
+                pos = 0;
                 if( !n_ )
                     break;
-                pos = 0;
             }else
                 pos -= block->location.sectors.post;
         }else
@@ -344,9 +336,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
                 }
                 data_p += n__;
                 n_ -= n__;
+                pos = 0;
                 if( !n_ )
                     break;
-                pos = 0;
             }else
                 pos -= block->location.in_sector.size;
     }
@@ -504,9 +496,9 @@ SYSCALL_DEFINE5( H_oux_E_fs_Q_file_I_write
             if( free_table_i == H_oux_E_fs_Q_device_S[ device_i ].free_table_n )
                 size = greatest_size;
             else
-            {   // Szukaj wolnego bloku na całe żądane dopisywane dane.
+            {   // Kontynuuj szukanie wolnego bloku, ale na całe żądane dopisywane dane.
                 uint64_t lowest_size = ~0ULL;
-                for( uint64_t free_table_i = 0; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
+                for( ; free_table_i != H_oux_E_fs_Q_device_S[ device_i ].free_table_n; free_table_i++ )
                 {   size = H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
                       ? H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.pre
                         + H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_i ].location.sectors.n * H_oux_E_fs_Q_device_S[ device_i ].sector_size
@@ -569,7 +561,7 @@ Write:      uint64_t n__;
                             error = error_;
                         if( error_ < 0 )
                         {   error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
-                            , n_0 - ( n_ + n__ )
+                            , n_0 - n__
                             , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                             , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , &block_table_diff
@@ -606,10 +598,10 @@ Write:      uint64_t n__;
                     n_ -= n__;
                     if( !n_ )
                     {   uint64_t size_left = size
-                          - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
-                            + sector_i * H_oux_E_fs_Q_device_S[ device_i ].sector_size
-                            + n__
-                            );
+                        - ( H_oux_E_fs_Q_device_S[ device_i ].free_table[ free_table_found_i ].location.sectors.pre
+                          + sector_i * H_oux_E_fs_Q_device_S[ device_i ].sector_size
+                          + n__
+                          );
                         int error_ = H_oux_E_fs_Q_block_table_I_unite( device_i
                         , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                         , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
@@ -640,7 +632,7 @@ Write:      uint64_t n__;
                             error = error_;
                         if( error_ < 0 )
                         {   error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
-                            , n_0 - ( n_ + n__ )
+                            , n_0 - n__
                             , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                             , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , &block_table_diff
@@ -675,7 +667,7 @@ Write:      uint64_t n__;
                     data_p += n__;
                     n_ -= n__;
                     if( !n_ )
-                    {   int error_ = H_oux_E_fs_Q_block_table_I_unite( device_i
+                    {	int error_ = H_oux_E_fs_Q_block_table_I_unite( device_i
                         , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                         , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                         , free_table_found_i, post - n__
@@ -693,7 +685,7 @@ Write:      uint64_t n__;
                             error = error_;
                         if( error_ < 0 )
                         {   error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
-                            , n_0 - ( n_ + n__ )
+                            , n_0 - n__
                             , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                             , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                             , &block_table_diff
@@ -743,7 +735,7 @@ Write:      uint64_t n__;
                         error = error_;
                     if( error_ < 0 )
                     {   error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
-                        , n_0 - ( n_ + n__ )
+                        , n_0 - n__
                         , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                         , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                         , &block_table_diff
@@ -763,7 +755,7 @@ Write:      uint64_t n__;
                 error = error_;
             if( error_ < 0 )
             {   error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
-                , n_0 - ( n_ + n__ )
+                , n_0 - n_
                 , H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
                 , &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
                 , &block_table_diff
