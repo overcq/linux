@@ -186,6 +186,7 @@ H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
             );
         H_oux_E_fs_Q_device_S[ device_i ].free_table_n--;
         void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].free_table, H_oux_E_fs_Q_device_S[ device_i ].free_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].free_table ), E_oux_E_fs_S_alloc_flags );
+        int error = 0;
         if(p)
             H_oux_E_fs_Q_device_S[ device_i ].free_table = p;
         else
@@ -428,7 +429,7 @@ H_oux_E_fs_Q_block_table_I_unite( unsigned device_i
     }
     int error = 0;
     if( realloc_subtract )
-    {   N64 block_table_diff_ = sizeof( uint64_t ) + 1
+    {   uint64_t block_table_diff_ = sizeof( uint64_t ) + 1
         + ( H_oux_E_fs_Q_device_S[ device_i ].block_table[ block_table_i ].location_type == H_oux_E_fs_Z_block_Z_location_S_sectors
           ? sizeof( uint64_t ) + sizeof( uint16_t ) + sizeof( uint16_t )
           : sizeof( uint16_t ) + sizeof( uint16_t )
@@ -1421,7 +1422,6 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
                             break;
                         }
                     }
-                }
                 H_oux_E_fs_Q_device_S[ device_i ].block_table_size -= block_table_diff_;
             }
             H_oux_E_fs_Q_device_S[ device_i ].block_table_size += count * internal_table_element_size;
@@ -1454,7 +1454,7 @@ H_oux_E_fs_Q_block_table_I_append_truncate( unsigned device_i
                     {   error = error_;
                         break;
                     }
-            }
+               }
         }
     H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff;
     pr_info( "block_table_size: %llu\n", H_oux_E_fs_Q_device_S[ device_i ].block_table_size );
