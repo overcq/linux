@@ -2293,8 +2293,7 @@ H_oux_E_fs_Q_device_I_save( unsigned device_i
     int error = 0;
     if( ~H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from )
     {   strcpy( sector, H_oux_E_fs_Q_device_S_ident );
-        sector[ sizeof( H_oux_E_fs_Q_device_S_ident ) ] = __builtin_ctz( H_oux_E_fs_Q_device_S[ device_i ].sector_size );
-        uint64_t *block_table_n = H_oux_J_align_up_p( sector + sizeof( H_oux_E_fs_Q_device_S_ident ) + 1, uint64_t );
+        uint64_t *block_table_n = H_oux_J_align_up_p( sector + sizeof( H_oux_E_fs_Q_device_S_ident ) - 1, uint64_t );
         block_table_n[0] = H_oux_E_fs_Q_device_S[ device_i ].block_table_n;
         block_table_n[1] = H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n;
         block_table_n[2] = H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start;
@@ -3515,7 +3514,10 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
             if( file_i_ != file_i
             && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
             )
-                H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
+            {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
+                if( H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from > file_i )
+                    H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
+            }
         H_oux_E_fs_Q_device_S[ device_i ].block_table_n -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
         void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_alloc_flags );
         if( !p )
