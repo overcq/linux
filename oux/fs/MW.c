@@ -21,6 +21,49 @@ extern void *H_oux_E_fs_Q_device_S_holder;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
+int
+H_oux_E_fs_Q_file_W_( unsigned device_i
+, uint64_t file_i
+){  if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
+    {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
+            H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start;
+        for( uint64_t block_table_i = 0; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n; block_table_i++ )
+        {   int error = H_oux_E_fs_Q_free_table_I_unite( device_i, &H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ] );
+            if(error)
+                return error;
+        }
+        memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
+        , H_oux_E_fs_Q_device_S[ device_i ].block_table + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
+        , ( H_oux_E_fs_Q_device_S[ device_i ].block_table_n - H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n ) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table )
+        ); //NDFN Czy nie powinno być przy obliczaniu liczby "block_table.start"?
+        if( H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
+            H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
+        if( H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
+            H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
+        for( uint64_t file_i_ = 0; file_i_ != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i_++ )
+            if( file_i_ != file_i
+            && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
+            )
+            {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
+                if( H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from > file_i )
+                    H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
+            }
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_n -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_alloc_flags );
+        if( !p )
+            return -ENOMEM;
+        H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
+    }
+    kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
+    if( file_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].file_n )
+        memcpy( &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ], &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].file_n - ( file_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ));
+    void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, --H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_alloc_flags );
+    if( !p )
+        return -ENOMEM;
+    H_oux_E_fs_Q_device_S[ device_i ].file = p;
+    return 0;
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define H_oux_E_fs_Q_device_I_switch_item( type, item, end ) \
     if( data_i ) \
     {   do \
@@ -3329,10 +3372,48 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
     {   error = -EINVAL;
         goto Error_0;
     }
-    uint64_t directory_i;
+    uint64_t uid_root = uid;
+    bool found = no;
+    uint64_t directory_i = 0;
+    do
+    {   for( ; directory_i != H_oux_E_fs_Q_device_S[ device_i ].directory_n; directory_i++ )
+            if( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].parent == uid )
+            {   found = yes;
+                uid = H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].uid;
+                directory_i = ~0;
+            }
+        if( !found )
+            break;
+        error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
+        if(error)
+            goto Error_0;
+        for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
+            if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == uid )
+            {   error = H_oux_E_fs_Q_file_W_( device_i, file_i );
+                if(error)
+                    goto Error_0;
+                file_i--;
+            }
+        kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
+        if( directory_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].directory_n )
+            memcpy( &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ], &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].directory_n - ( directory_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ));
+        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].directory, --H_oux_E_fs_Q_device_S[ device_i ].directory_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ), E_oux_E_fs_S_alloc_flags );
+        if( !p )
+        {   error = -ENOMEM;
+            goto Error_0;
+        }
+        H_oux_E_fs_Q_device_S[ device_i ].directory = p;
+    }while( uid != uid_root );
     error = H_oux_E_fs_Q_directory_R( device_i, uid, &directory_i );
     if(error)
         goto Error_0;
+    for( uint64_t file_i = 0; file_i != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i++ )
+        if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].parent == uid )
+        {   error = H_oux_E_fs_Q_file_W_( device_i, file_i );
+            if(error)
+                goto Error_0;
+            file_i--;
+        }
     kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
     if( directory_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].directory_n )
         memcpy( &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ], &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].directory_n - ( directory_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ));
@@ -3494,47 +3575,7 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_file_W
     {   error = -EPERM;
         goto Error_0;
     }
-    if( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n )
-    {   if( H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
-            H_oux_E_fs_Q_device_S[ device_i ].block_table_changed_from = H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start;
-        for( uint64_t block_table_i = 0; block_table_i != H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n; block_table_i++ )
-        {   error = H_oux_E_fs_Q_free_table_I_unite( device_i, &H_oux_E_fs_Q_device_S[ device_i ].block_table[ H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + block_table_i ] );
-            if(error)
-                goto Error_0;
-        }
-        memmove( H_oux_E_fs_Q_device_S[ device_i ].block_table + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
-        , H_oux_E_fs_Q_device_S[ device_i ].block_table + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start + H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n
-        , ( H_oux_E_fs_Q_device_S[ device_i ].block_table_n - H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n ) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table )
-        ); //NDFN Czy nie powinno być przy obliczaniu liczby "block_table.start"?
-        if( H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
-            H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
-        if( H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start )
-            H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
-        for( uint64_t file_i_ = 0; file_i_ != H_oux_E_fs_Q_device_S[ device_i ].file_n; file_i_++ )
-            if( file_i_ != file_i
-            && H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start > H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.start
-            )
-            {   H_oux_E_fs_Q_device_S[ device_i ].file[ file_i_ ].block_table.start -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
-                if( H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from > file_i )
-                    H_oux_E_fs_Q_device_S[ device_i ].file_table_changed_from = file_i;
-            }
-        H_oux_E_fs_Q_device_S[ device_i ].block_table_n -= H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].block_table.n;
-        void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].block_table, H_oux_E_fs_Q_device_S[ device_i ].block_table_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].block_table ), E_oux_E_fs_S_alloc_flags );
-        if( !p )
-        {   error = -ENOMEM;
-            goto Error_0;
-        }
-        H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
-    }
-    kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
-    if( file_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].file_n )
-        memcpy( &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ], &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].file_n - ( file_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ));
-    void *p = krealloc_array( H_oux_E_fs_Q_device_S[ device_i ].file, --H_oux_E_fs_Q_device_S[ device_i ].file_n, sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ), E_oux_E_fs_S_alloc_flags );
-    if( !p )
-    {   error = -ENOMEM;
-        goto Error_0;
-    }
-    H_oux_E_fs_Q_device_S[ device_i ].file = p;
+    error = H_oux_E_fs_Q_file_W_( device_i, file_i );
 Error_0:
     up_write( &E_oux_E_fs_S_rw_lock );
     return error;
