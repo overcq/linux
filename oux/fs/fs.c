@@ -1544,6 +1544,33 @@ H_oux_E_fs_Q_directory_file_I_block_append( unsigned device_i
         error = -error;
     return error;
 }
+int
+H_oux_E_fs_Q_directory_file_I_block_truncate( unsigned device_i
+, uint64_t n
+, uint64_t block_start
+, uint64_t *block_n
+){  int64_t block_table_diff__;
+    int error = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, n, block_start, block_n, &block_table_diff__ );
+    while( block_table_diff__ )
+    {   uint64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff__ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
+        ? -block_table_diff__
+        : H_oux_E_fs_Q_device_S[ device_i ].block_table_size - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
+        H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
+        if( block_table_diff_above <= 0 )
+            break;
+        int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
+        , block_table_diff_above
+        , 0, &H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n
+        , &block_table_diff__
+        );
+        if( error_ )
+        {   error = error_;
+            break;
+        }
+    }
+    error = -error;
+    return error;
+}
 static
 int
 H_oux_E_fs_Q_directory_file_I_block_append_truncate( unsigned device_i
@@ -1557,27 +1584,7 @@ H_oux_E_fs_Q_directory_file_I_block_append_truncate( unsigned device_i
     if( n > n_prev )
         error = H_oux_E_fs_Q_directory_file_I_block_append( device_i, n - n_prev, block_start, block_n, changed_from );
     else if( n < n_prev )
-    {   int64_t block_table_diff__;
-        error = H_oux_E_fs_Z_start_n_I_block_truncate( device_i, n_prev - n, *block_start, block_n, &block_table_diff__ );
-        while( block_table_diff__ )
-        {   uint64_t block_table_diff_above = H_oux_E_fs_Q_device_S[ device_i ].block_table_size + block_table_diff__ > H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size
-            ? -block_table_diff__
-            : H_oux_E_fs_Q_device_S[ device_i ].block_table_size - H_oux_E_fs_Q_device_S[ device_i ].first_sector_max_size;
-            H_oux_E_fs_Q_device_S[ device_i ].block_table_size += block_table_diff__;
-            if( block_table_diff_above <= 0 )
-                break;
-            int error_ = H_oux_E_fs_Z_start_n_I_block_truncate( device_i
-            , block_table_diff_above
-            , 0, &H_oux_E_fs_Q_device_S[ device_i ].block_table_block_table_n
-            , &block_table_diff__
-            );
-            if( error_ )
-            {   error = error_;
-                break;
-            }
-        }
-        error = -error;
-    }
+        error = H_oux_E_fs_Q_directory_file_I_block_truncate( device_i, n_prev - n, *block_start, block_n );
     return error;
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

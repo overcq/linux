@@ -21,6 +21,7 @@ extern void *H_oux_E_fs_Q_device_S_holder;
 extern struct H_oux_E_fs_Q_device_Z *H_oux_E_fs_Q_device_S;
 extern unsigned H_oux_E_fs_Q_device_S_n;
 //==============================================================================
+static
 int
 H_oux_E_fs_Q_file_W_( unsigned device_i
 , uint64_t file_i
@@ -54,6 +55,13 @@ H_oux_E_fs_Q_file_W_( unsigned device_i
             return -ENOMEM;
         H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
     }
+    int error = H_oux_E_fs_Q_directory_file_I_block_truncate( device_i
+    , 2 * sizeof( uint64_t ) + strlen( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name ) + 1
+    , H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start
+    , &H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_n
+    );
+    if(error)
+        return error;
     kfree( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name );
     if( file_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].file_n )
         memcpy( &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ], &H_oux_E_fs_Q_device_S[ device_i ].file[ file_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].file_n - ( file_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].file ));
@@ -3394,6 +3402,13 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
                     goto Error_0;
                 file_i--;
             }
+        error = H_oux_E_fs_Q_directory_file_I_block_truncate( device_i
+        , 2 * sizeof( uint64_t ) + strlen( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name ) + 1
+        , H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start
+        , &H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_n
+        );
+        if(error)
+            goto Error_0;
         kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
         if( directory_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].directory_n )
             memcpy( &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ], &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].directory_n - ( directory_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ));
@@ -3414,6 +3429,13 @@ SYSCALL_DEFINE2( H_oux_E_fs_Q_directory_W
                 goto Error_0;
             file_i--;
         }
+    error = H_oux_E_fs_Q_directory_file_I_block_truncate( device_i
+    , 2 * sizeof( uint64_t ) + strlen( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name ) + 1
+    , H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_start
+    , &H_oux_E_fs_Q_device_S[ device_i ].block_table_directory_table_n
+    );
+    if(error)
+        goto Error_0;
     kfree( H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ].name );
     if( directory_i + 1 != H_oux_E_fs_Q_device_S[ device_i ].directory_n )
         memcpy( &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i ], &H_oux_E_fs_Q_device_S[ device_i ].directory[ directory_i + 1 ], ( H_oux_E_fs_Q_device_S[ device_i ].directory_n - ( directory_i + 1 )) * sizeof( *H_oux_E_fs_Q_device_S[ device_i ].directory ));
