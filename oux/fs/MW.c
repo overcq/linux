@@ -56,7 +56,7 @@ H_oux_E_fs_Q_file_W_( unsigned device_i
         H_oux_E_fs_Q_device_S[ device_i ].block_table = p;
     }
     int error = H_oux_E_fs_Q_directory_file_I_block_truncate( device_i
-    , 2 * sizeof( uint64_t ) + strlen( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name ) + 1
+    , 4 * sizeof( uint64_t ) + strlen( H_oux_E_fs_Q_device_S[ device_i ].file[ file_i ].name ) + 1
     , H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_start
     , &H_oux_E_fs_Q_device_S[ device_i ].block_table_file_table_n
     );
