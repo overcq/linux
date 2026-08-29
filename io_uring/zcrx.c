@@ -455,7 +455,7 @@ static void io_zcrx_free_area(struct io_zcrx_ifq *ifq,
 			      struct io_zcrx_area *area)
 {
 	if (area->ifq)
-		io_zcrx_unmap_area(area->ifq, area);
+		__io_zcrx_unmap_area(area->ifq, area);
 	io_release_area_mem(&area->mem);
 
 	if (area->mem.account_pages)
