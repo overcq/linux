@@ -1164,7 +1164,7 @@ static const struct ethtool_rmon_hist_range emac_rmon_hist_ranges[] = {
 	{  512, 1023 },
 	{ 1024, 1518 },
 	{ 1519, 4096 },
-	{ /* sentinel */ },
+	{ /* sentinel */ }
 };
 
 /* Like dev_fetch_dstats(), but we only use tx_drops */
@@ -1732,7 +1732,6 @@ static int emac_down(struct emac_priv *priv)
 	napi_disable(&priv->napi);
 
 	timer_delete_sync(&priv->txtimer);
-	cancel_work_sync(&priv->tx_timeout_task);
 
 	timer_delete_sync(&priv->stats_timer);
 
@@ -2010,8 +2009,9 @@ static void emac_remove(struct platform_device *pdev)
 {
 	struct emac_priv *priv = platform_get_drvdata(pdev);
 
+	disable_work_sync(&priv->tx_timeout_task);
+
 	timer_shutdown_sync(&priv->txtimer);
-	cancel_work_sync(&priv->tx_timeout_task);
 
 	timer_shutdown_sync(&priv->stats_timer);
 
@@ -2024,16 +2024,23 @@ static int emac_resume(struct device *dev)
 	struct net_device *ndev = priv->ndev;
 	int ret;
 
+	enable_work(&priv->tx_timeout_task);
+
 	ret = clk_prepare_enable(priv->bus_clk);
 	if (ret < 0) {
 		dev_err(dev, "Failed to enable bus clock: %d\n", ret);
 		return ret;
 	}
+	rtnl_lock();
 
-	if (!netif_running(ndev))
+	if (!netif_running(ndev)) {
+		rtnl_unlock();
 		return 0;
+	}
 
 	ret = emac_open(ndev);
+	rtnl_unlock();
+
 	if (ret) {
 		clk_disable_unprepare(priv->bus_clk);
 		return ret;
@@ -2051,12 +2058,18 @@ static int emac_suspend(struct device *dev)
 	struct emac_priv *priv = dev_get_drvdata(dev);
 	struct net_device *ndev = priv->ndev;
 
+	disable_work_sync(&priv->tx_timeout_task);
+
+	rtnl_lock();
+
 	if (!ndev || !netif_running(ndev)) {
+		rtnl_unlock();
 		clk_disable_unprepare(priv->bus_clk);
 		return 0;
 	}
 
 	emac_stop(ndev);
+	rtnl_unlock();
 
 	clk_disable_unprepare(priv->bus_clk);
 	netif_device_detach(ndev);
@@ -2069,7 +2082,7 @@ static const struct dev_pm_ops emac_pm_ops = {
 
 static const struct of_device_id emac_of_match[] = {
 	{ .compatible = "spacemit,k1-emac" },
-	{ /* sentinel */ },
+	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, emac_of_match);
 

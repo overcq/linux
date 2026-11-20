@@ -1241,6 +1241,11 @@ static int mlx5_esw_host_functions_enabled_query(struct mlx5_eswitch *esw)
 	struct mlx5_esw_pf_info host_pf_info;
 	const u32 *query_host_out;
 
+	if (!mlx5_core_is_pf(esw->dev)) {
+		esw->esw_funcs.host_funcs_disabled = true;
+		return 0;
+	}
+
 	if (!mlx5_core_is_ecpf_esw_manager(esw->dev))
 		return 0;
 
@@ -1509,12 +1514,8 @@ int mlx5_esw_pf_enable_hca(struct mlx5_core_dev *dev, u16 vport_num)
 	struct mlx5_vport *vport;
 	int err;
 
-	if (!mlx5_core_is_ecpf(dev) || !mlx5_esw_allowed(esw))
+	if (!mlx5_core_is_ecpf(dev))
 		return 0;
-
-	vport = mlx5_eswitch_get_vport(esw, vport_num);
-	if (IS_ERR(vport))
-		return PTR_ERR(vport);
 
 	/* Once vport and representor are ready, take the PF out of
 	 * initializing state. Enabling HCA clears the iser->initializing
@@ -1524,7 +1525,11 @@ int mlx5_esw_pf_enable_hca(struct mlx5_core_dev *dev, u16 vport_num)
 	if (err)
 		return err;
 
-	vport->pf_activated = true;
+	if (mlx5_esw_allowed(esw)) {
+		vport = mlx5_eswitch_get_vport(esw, vport_num);
+		if (!IS_ERR(vport))
+			vport->pf_activated = true;
+	}
 
 	return 0;
 }
@@ -1535,18 +1540,18 @@ int mlx5_esw_pf_disable_hca(struct mlx5_core_dev *dev, u16 vport_num)
 	struct mlx5_vport *vport;
 	int err;
 
-	if (!mlx5_core_is_ecpf(dev) || !mlx5_esw_allowed(esw))
+	if (!mlx5_core_is_ecpf(dev))
 		return 0;
-
-	vport = mlx5_eswitch_get_vport(esw, vport_num);
-	if (IS_ERR(vport))
-		return PTR_ERR(vport);
 
 	err = mlx5_cmd_pf_disable_hca(dev, vport_num);
 	if (err)
 		return err;
 
-	vport->pf_activated = false;
+	if (mlx5_esw_allowed(esw)) {
+		vport = mlx5_eswitch_get_vport(esw, vport_num);
+		if (!IS_ERR(vport))
+			vport->pf_activated = false;
+	}
 
 	return 0;
 }
@@ -2460,13 +2465,20 @@ static int mlx5_esw_vports_init(struct mlx5_eswitch *esw)
 		}
 	}
 
-	if (mlx5_ecpf_vport_exists(dev) ||
-	    mlx5_core_is_ecpf_esw_manager(dev)) {
+	if (mlx5_ecpf_vport_exists(dev)) {
 		err = mlx5_esw_vport_alloc(esw, idx, MLX5_VPORT_ECPF);
 		if (err)
 			goto err;
 		idx++;
 	}
+
+	if (!xa_load(&esw->vports, esw->manager_vport)) {
+		err = mlx5_esw_vport_alloc(esw, idx, esw->manager_vport);
+		if (err)
+			goto err;
+		idx++;
+	}
+
 	err = mlx5_esw_vport_alloc(esw, idx, MLX5_VPORT_UPLINK);
 	if (err)
 		goto err;
@@ -2951,7 +2963,7 @@ bool mlx5_esw_hold(struct mlx5_core_dev *mdev)
 {
 	struct mlx5_eswitch *esw = mdev->priv.eswitch;
 
-	/* e.g. VF doesn't have eswitch so nothing to do */
+	/* Not an eswitch manager, so there is no mode lock to take */
 	if (!mlx5_esw_allowed(esw))
 		return true;
 
@@ -3039,12 +3051,36 @@ int mlx5_esw_lock(struct mlx5_eswitch *esw)
 	return 0;
 }
 
+static void esw_mode_lock(struct mlx5_eswitch *esw)
+{
+	down_write(&esw->mode_lock);
+}
+
+static void esw_mode_unlock(struct mlx5_eswitch *esw)
+{
+	up_write(&esw->mode_lock);
+}
+
+/* Lock the eswitch and wait for an operation in progress to finish. */
+void mlx5_esw_lock_wait(struct mlx5_eswitch *esw)
+{
+	down_write(&esw->mode_lock);
+	wait_var_event_any_lock(&esw->eswitch_operation_in_progress,
+				!esw->eswitch_operation_in_progress,
+				esw, esw_mode, TASK_UNINTERRUPTIBLE);
+}
+
 /**
  * mlx5_esw_unlock() - Release write lock on esw mode lock
  * @esw: eswitch device.
+ *
+ * Also wakes up mlx5_esw_lock_wait() waiters, so it must be used to release
+ * mode_lock after clearing eswitch_operation_in_progress.
  */
 void mlx5_esw_unlock(struct mlx5_eswitch *esw)
 {
+	wake_up_var_locked(&esw->eswitch_operation_in_progress,
+			   &esw->mode_lock);
 	up_write(&esw->mode_lock);
 }
 
@@ -3099,7 +3135,7 @@ void mlx5_eswitch_unblock_ipsec(struct mlx5_core_dev *dev)
 	struct mlx5_eswitch *esw = dev->priv.eswitch;
 
 	if (!mlx5_esw_allowed(esw))
-		/* Failure means no eswitch => core dev is not a PF */
+		/* Not an eswitch manager, so nothing was blocked */
 		return;
 
 	mutex_lock(&esw->state_lock);

@@ -44,6 +44,7 @@
 #include <net/sock.h>
 #include <net/tcp_states.h>
 #include <net/netfilter/nf_queue.h>
+#include <net/net_debug.h>
 #include <net/netns/generic.h>
 
 #include <linux/atomic.h>
@@ -365,21 +366,30 @@ static void nf_reinject(struct nf_queue_entry *entry, unsigned int verdict)
 	const struct nf_hook_entry *hook_entry;
 	const struct nf_hook_entries *hooks;
 	struct sk_buff *skb = entry->skb;
+	bool old_in_nf_duplicate;
 	const struct net *net;
 	unsigned int i;
 	int err;
 	u8 pf;
 
+	DEBUG_NET_WARN_ONCE(current->in_nf_duplicate &&
+			    !entry->in_nf_duplicate,
+			    "%s called with unexpected duplication guard",
+			    __func__);
+	local_bh_disable();
+	old_in_nf_duplicate = current->in_nf_duplicate;
+
 	net = entry->state.net;
 	pf = entry->state.pf;
 
+	current->in_nf_duplicate = entry->in_nf_duplicate;
 	hooks = nf_hook_entries_head(net, pf, entry->state.hook);
 
 	i = entry->hook_index;
 	if (!hooks || i >= hooks->num_hook_entries) {
 		kfree_skb_reason(skb, SKB_DROP_REASON_NETFILTER_DROP);
 		nf_queue_entry_free(entry);
-		return;
+		goto out;
 	}
 
 	hook_entry = &hooks->hooks[i];
@@ -402,9 +412,7 @@ next_hook:
 	switch (verdict & NF_VERDICT_MASK) {
 	case NF_ACCEPT:
 	case NF_STOP:
-		local_bh_disable();
 		entry->state.okfn(entry->state.net, entry->state.sk, skb);
-		local_bh_enable();
 		break;
 	case NF_QUEUE:
 		err = nf_queue(skb, &entry->state, i, verdict);
@@ -418,6 +426,9 @@ next_hook:
 	}
 
 	nf_queue_entry_free(entry);
+out:
+	current->in_nf_duplicate = old_in_nf_duplicate;
+	local_bh_enable();
 }
 
 /* return true if the entry has an unconfirmed conntrack attached that isn't owned by us
@@ -1566,9 +1577,39 @@ static struct notifier_block nfqnl_dev_notifier = {
 	.notifier_call	= nfqnl_rcv_dev_event,
 };
 
-static void nfqnl_nf_hook_drop(struct net *net)
+/* Match the entries whose hook_index points into the hook array that
+ * __nf_unregister_net_hook() replaces when it removes @ops.
+ *
+ * ops->pf/hooknum name the hook as registered; entry->state.pf/hook
+ * name the array actually traversed - they differ only for NFPROTO_INET.
+ * Every other family uses the array of its own name.
+ */
+static int nf_hook_cmp(struct nf_queue_entry *entry, unsigned long ops_ptr)
+{
+	const struct nf_hook_ops *ops = (const struct nf_hook_ops *)ops_ptr;
+	unsigned int hooknum = ops->hooknum;
+	u8 pf = ops->pf;
+
+	/* same translation as nf_static_key_inc() */
+	if (pf == NFPROTO_INET && hooknum == NF_INET_INGRESS) {
+		pf = NFPROTO_NETDEV;
+		hooknum = NF_NETDEV_INGRESS;
+	}
+
+	if (entry->state.hook != hooknum)
+		return 0;
+
+	if (pf == NFPROTO_INET)
+		return entry->state.pf == NFPROTO_IPV4 ||
+		       entry->state.pf == NFPROTO_IPV6;
+
+	return entry->state.pf == pf;
+}
+
+static void nfqnl_nf_hook_drop(struct net *net, const struct nf_hook_ops *ops)
 {
 	struct nfnl_queue_net *q = nfnl_queue_pernet(net);
+	nfqnl_cmpfn cmpfn = NULL;
 	int i;
 
 	/* This function is also called on net namespace error unwind,
@@ -1581,12 +1622,19 @@ static void nfqnl_nf_hook_drop(struct net *net)
 	if (!q)
 		return;
 
+	/* ops is NULL when the caller is not unregistering a hook but
+	 * removing an object queued packets may reference, every entry
+	 * has to go
+	 */
+	if (ops)
+		cmpfn = nf_hook_cmp;
+
 	for (i = 0; i < INSTANCE_BUCKETS; i++) {
 		struct nfqnl_instance *inst;
 		struct hlist_head *head = &q->instance_table[i];
 
 		hlist_for_each_entry_rcu(inst, head, hlist)
-			nfqnl_flush(inst, NULL, 0);
+			nfqnl_flush(inst, cmpfn, (unsigned long)ops);
 	}
 }
 
