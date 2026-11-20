@@ -8,7 +8,6 @@
 #include <linux/etherdevice.h>
 #include <linux/if_ether.h>
 #include <linux/if_vlan.h>
-#include <net/llc_pdu.h>
 #include <linux/kernel.h>
 #include <linux/jhash.h>
 #include <linux/jiffies.h>
@@ -370,11 +369,28 @@ static void get_ipv6_ext_hdrs(struct sk_buff *skb, struct ipv6hdr *nh,
 			return;
 		}
 
+		if (next_type == IPPROTO_FRAGMENT) {
+			struct frag_hdr _fh, *fh;
+
+			fh = skb_header_pointer(skb, start, sizeof(_fh), &_fh);
+			if (!fh)
+				break;
+			/* Only the first fragment has the headers that follow. */
+			if (fh->frag_off & htons(IP6_OFFSET))
+				break;
+			start += sizeof(_fh);
+			next_type = fh->nexthdr;
+			continue;
+		}
+
 		hp = skb_header_pointer(skb, start, sizeof(_hdr), &_hdr);
 		if (!hp)
 			break;
+		if (next_type == IPPROTO_AH)
+			start += ipv6_authlen(hp);
+		else
+			start += ipv6_optlen(hp);
 		next_type = hp->nexthdr;
-		start += ipv6_optlen(hp);
 	}
 }
 
@@ -422,7 +438,8 @@ static int parse_ipv6hdr(struct sk_buff *skb, struct sw_flow_key *key)
 		return -EPROTO;
 
 	nh_len = payload_ofs - nh_ofs;
-	skb_set_transport_header(skb, nh_ofs + nh_len);
+	if (unlikely(!skb_set_transport_header_careful(skb, payload_ofs)))
+		return -EPROTO;
 	key->ip.proto = nexthdr;
 	return nh_len;
 }

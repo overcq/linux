@@ -651,11 +651,12 @@ static struct sock *__udp6_lib_err_encap(struct net *net,
 	network_offset = skb_network_offset(skb);
 	transport_offset = skb_transport_offset(skb);
 
+	/* Transport header needs to point to the UDP header */
+	if (unlikely(!skb_set_transport_header_careful(skb, offset)))
+		return ERR_PTR(-EINVAL);
+
 	/* Network header needs to point to the outer IPv6 header inside ICMP */
 	skb_reset_network_header(skb);
-
-	/* Transport header needs to point to the UDP header */
-	skb_set_transport_header(skb, offset);
 
 	if (sk) {
 		up = udp_sk(sk);
@@ -751,13 +752,7 @@ static int udpv6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
 			harderr = 1;
 	}
 	if (type == NDISC_REDIRECT) {
-		if (tunnel) {
-			ip6_redirect(skb, sock_net(sk), inet6_iif(skb),
-				     READ_ONCE(sk->sk_mark),
-				     sk_uid(sk));
-		} else {
-			ip6_sk_redirect(skb, sk);
-		}
+		ip6_sk_redirect(skb, sk);
 		goto out;
 	}
 
@@ -1255,8 +1250,11 @@ void udp_v6_early_demux(struct sk_buff *skb)
 	skb->destructor = sock_pfree;
 	dst = rcu_dereference(sk->sk_rx_dst);
 
-	if (dst)
+	/* A dual-stack socket can cache an IPv4 dst. */
+	if (dst && dst->ops->family == AF_INET6)
 		dst = dst_check(dst, sk->sk_rx_dst_cookie);
+	else
+		dst = NULL;
 	if (dst) {
 		/* set noref for now.
 		 * any place which wants to hold dst has to call

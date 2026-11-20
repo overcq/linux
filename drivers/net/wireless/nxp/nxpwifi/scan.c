@@ -1209,6 +1209,8 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 				(u16)(current_ptr - bss_entry->beacon_buf);
 			break;
 		case WLAN_EID_HT_CAPABILITY:
+			if (element_len < sizeof(*bss_entry->bcn_ht_cap))
+				return -EINVAL;
 			bss_entry->bcn_ht_cap =
 				(struct ieee80211_ht_cap *)(current_ptr +
 							    elem_size);
@@ -1217,6 +1219,8 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 				      bss_entry->beacon_buf);
 			break;
 		case WLAN_EID_HT_OPERATION:
+			if (element_len < sizeof(*bss_entry->bcn_ht_oper))
+				return -EINVAL;
 			bss_entry->bcn_ht_oper =
 				(struct ieee80211_ht_operation *)(current_ptr +
 								  elem_size);
@@ -1225,6 +1229,8 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 				      bss_entry->beacon_buf);
 			break;
 		case WLAN_EID_VHT_CAPABILITY:
+			if (element_len < sizeof(*bss_entry->bcn_vht_cap))
+				return -EINVAL;
 			bss_entry->disable_11ac = false;
 			bss_entry->bcn_vht_cap = (void *)(current_ptr +
 							  elem_size);
@@ -1233,6 +1239,8 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 				      bss_entry->beacon_buf);
 			break;
 		case WLAN_EID_VHT_OPERATION:
+			if (element_len < sizeof(*bss_entry->bcn_vht_oper))
+				return -EINVAL;
 			bss_entry->bcn_vht_oper =
 				(void *)(current_ptr + elem_size);
 			bss_entry->vht_info_offset =
@@ -1240,6 +1248,8 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 				      bss_entry->beacon_buf);
 			break;
 		case WLAN_EID_BSS_COEX_2040:
+			if (!element_len)
+				return -EINVAL;
 			bss_entry->bcn_bss_co_2040 = current_ptr;
 			bss_entry->bss_co_2040_offset =
 				(u16)(current_ptr - bss_entry->beacon_buf);
@@ -1250,6 +1260,8 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 				(u16)(current_ptr - bss_entry->beacon_buf);
 			break;
 		case WLAN_EID_OPMODE_NOTIF:
+			if (total_ie_len < sizeof(*bss_entry->oper_mode))
+				return -EINVAL;
 			bss_entry->oper_mode = (void *)current_ptr;
 			bss_entry->oper_mode_offset =
 				(u16)(current_ptr - bss_entry->beacon_buf);
@@ -1262,6 +1274,9 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 
 			switch (elem->data[0]) {
 			case WLAN_EID_EXT_HE_CAPABILITY:
+				if (element_len <
+				    1 + sizeof(*bss_entry->bcn_he_cap))
+					return -EINVAL;
 				bss_entry->disable_11ax = false;
 				bss_entry->bcn_he_cap =
 					(void *)(current_ptr + elem_size + 1);
@@ -1270,6 +1285,9 @@ int nxpwifi_update_bss_desc_with_ie(struct nxpwifi_adapter *adapter,
 					      bss_entry->beacon_buf);
 				break;
 			case WLAN_EID_EXT_HE_OPERATION:
+				if (element_len <
+				    1 + sizeof(*bss_entry->bcn_he_oper))
+					return -EINVAL;
 				bss_entry->bcn_he_oper =
 					(void *)(current_ptr + elem_size + 1);
 				bss_entry->he_info_offset =
@@ -1855,26 +1873,32 @@ void nxpwifi_cancel_scan(struct nxpwifi_adapter *adapter)
 {
 	struct nxpwifi_private *priv;
 	int i;
+	bool cancel = false;
 
 	nxpwifi_cancel_pending_scan_cmd(adapter);
 
+	spin_lock_bh(&adapter->nxpwifi_cmd_lock);
 	if (adapter->scan_processing) {
-		spin_lock_bh(&adapter->nxpwifi_cmd_lock);
 		adapter->scan_processing = false;
-		spin_unlock_bh(&adapter->nxpwifi_cmd_lock);
-		for (i = 0; i < adapter->priv_num; i++) {
-			priv = adapter->priv[i];
-			if (priv->scan_request) {
-				struct cfg80211_scan_info info = {
-					.aborted = true,
-				};
+		cancel = true;
+	}
+	spin_unlock_bh(&adapter->nxpwifi_cmd_lock);
 
-				nxpwifi_dbg(adapter, INFO,
-					    "info: aborting scan\n");
-				cfg80211_scan_done(priv->scan_request, &info);
-				priv->scan_request = NULL;
-				priv->scan_aborting = false;
-			}
+	if (!cancel)
+		return;
+
+	for (i = 0; i < adapter->priv_num; i++) {
+		priv = adapter->priv[i];
+		if (priv->scan_request) {
+			struct cfg80211_scan_info info = {
+				.aborted = true,
+			};
+
+			nxpwifi_dbg(adapter, INFO,
+				    "info: aborting scan\n");
+			cfg80211_scan_done(priv->scan_request, &info);
+			priv->scan_request = NULL;
+			priv->scan_aborting = false;
 		}
 	}
 }
@@ -1999,12 +2023,22 @@ int nxpwifi_ret_802_11_scan(struct nxpwifi_private *priv,
 		 * was received.
 		 */
 		if (tsf_tlv)
-			memcpy(&fw_tsf, &tsf_tlv->tsf_data[idx * TSF_DATA_SIZE],
-			       sizeof(fw_tsf));
+			if ((idx + 1) * TSF_DATA_SIZE <=
+			    le16_to_cpu(tsf_tlv->header.len))
+				memcpy(&fw_tsf,
+				       &tsf_tlv->tsf_data[idx *
+							  TSF_DATA_SIZE],
+				       sizeof(fw_tsf));
 
 		if (chan_band_tlv) {
-			chan_band = &chan_band_tlv->chan_band_param[idx];
-			radio_type = &chan_band->radio_type;
+			if ((idx + 1) * sizeof(*chan_band) <=
+			    le16_to_cpu(chan_band_tlv->header.len)) {
+				chan_band =
+					&chan_band_tlv->chan_band_param[idx];
+				radio_type = &chan_band->radio_type;
+			} else {
+				radio_type = NULL;
+			}
 		} else {
 			radio_type = NULL;
 		}

@@ -1436,7 +1436,8 @@ void cfg80211_bss_flush(struct wiphy *wiphy)
 EXPORT_SYMBOL(cfg80211_bss_flush);
 
 const struct element *
-cfg80211_find_elem_match(u8 eid, const u8 *ies, unsigned int len,
+cfg80211_find_elem_match(enum ieee80211_eid eid,
+			 const u8 *ies, unsigned int len,
 			 const u8 *match, unsigned int match_len,
 			 unsigned int match_offset)
 {
@@ -2452,6 +2453,7 @@ cfg80211_inform_single_bss_data(struct wiphy *wiphy,
 		if (cfg80211_add_nontrans_list(data->source_bss, &res->pub)) {
 			if (__cfg80211_unlink_bss(rdev, res)) {
 				rdev->bss_generation++;
+				bss_ref_put(rdev, res);
 				res = NULL;
 			}
 		}
@@ -2591,7 +2593,7 @@ cfg80211_parse_mbssid_data(struct wiphy *wiphy,
 		if (elem->data[0] < 1 || (int)elem->data[0] > 8)
 			continue;
 		for_each_element(sub, elem->data + 1, elem->datalen - 1) {
-			u8 profile_len;
+			size_t profile_len;
 
 			if (sub->id != 0 || sub->datalen < 4) {
 				/* not a valid BSS profile */
@@ -2787,7 +2789,7 @@ cfg80211_defrag_mle(const struct element *mle, const u8 *ie, size_t ielen,
 	ielen = mle_len - common_size;
 
 	idx = 0;
-	for_each_element_id(elem, IEEE80211_MLE_SUBELEM_PER_STA_PROFILE,
+	for_each_element_id(elem, (u8)IEEE80211_MLE_SUBELEM_PER_STA_PROFILE,
 			    ie, ielen) {
 		res->sta_prof[idx] = (void *)elem->data;
 		res->sta_prof_len[idx] = elem->datalen;
@@ -3336,6 +3338,10 @@ cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
 		return NULL;
 
 	if (WARN_ON(!wiphy))
+		return NULL;
+
+	/* NAN beacons are not a BSS, don't add to the BSS table */
+	if (ieee80211_is_nan_beacon(mgmt, len))
 		return NULL;
 
 	BUILD_BUG_ON(offsetof(struct ieee80211_mgmt, u.probe_resp.variable) !=

@@ -22,7 +22,6 @@
 #include <linux/mempool.h>
 #include <linux/sched/signal.h>
 #include <linux/task_io_accounting_ops.h>
-#include <linux/task_work.h>
 #include "cifsglob.h"
 #include "cifsproto.h"
 #include "cifs_debug.h"
@@ -171,15 +170,22 @@ smb_send_kvec(struct TCP_Server_Info *server, struct msghdr *smb_msg,
 		 * after the retries we will kill the socket and
 		 * reconnect which may clear the network problem.
 		 *
-		 * Even if regular signals are masked, EINTR might be
-		 * propagated from sk_stream_wait_memory() to here when
-		 * TIF_NOTIFY_SIGNAL is used for task work. For example,
-		 * certain io_uring completions will use that. Treat
-		 * having EINTR with pending task work the same as EAGAIN
-		 * to avoid unnecessary reconnects.
+		 * Task work must not abort the send, see signal_pending().
 		 */
-		rc = sock_sendmsg(ssocket, smb_msg);
-		if (rc == -EAGAIN || unlikely(rc == -EINTR && task_work_pending(current))) {
+		scoped_guard(no_notify_signal)
+			rc = sock_sendmsg(ssocket, smb_msg);
+
+		/*
+		 * If need to reconnect, blame it for any non-interrupt error
+		 * and bail out early, even if -EAGAIN;  reconnect will never
+		 * happen in parallel as cifs_reconnect() needs server mutex
+		 * (which we're already holding), so it's pointless to retry.
+		 */
+		if (unlikely(rc <= 0 && !is_interrupt_error(rc) &&
+			     READ_ONCE(server->tcpStatus) == CifsNeedReconnect))
+			return -ECONNRESET;
+
+		if (rc == -EAGAIN) {
 			retries++;
 			if (retries >= 14 ||
 			    (!server->noblocksnd && (retries > 2))) {
@@ -424,6 +430,7 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int num_credits,
 		      const int timeout, const int flags,
 		      unsigned int *instance)
 {
+	bool nowait = flags & CIFS_NO_RECONNECT_WAIT;
 	long rc;
 	int *credits;
 	int optype;
@@ -472,6 +479,10 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int num_credits,
 			spin_unlock(&server->srv_lock);
 			return -ENOENT;
 		}
+		if (nowait && server->tcpStatus == CifsNeedReconnect) {
+			spin_unlock(&server->srv_lock);
+			return -EAGAIN;
+		}
 		spin_unlock(&server->srv_lock);
 
 		spin_lock(&server->req_lock);
@@ -481,7 +492,8 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int num_credits,
 
 			cifs_num_waiters_inc(server);
 			rc = wait_event_killable_timeout(server->request_q,
-				has_credits(server, credits, num_credits), t);
+				credits_or_conn_down(server, credits,
+						     num_credits, nowait), t);
 			cifs_num_waiters_dec(server);
 			if (!rc) {
 				spin_lock(&server->req_lock);
@@ -521,8 +533,9 @@ wait_for_free_credits(struct TCP_Server_Info *server, const int num_credits,
 				cifs_num_waiters_inc(server);
 				rc = wait_event_killable_timeout(
 					server->request_q,
-					has_credits(server, credits,
-						    MAX_COMPOUND + 1),
+					credits_or_conn_down(server, credits,
+							     MAX_COMPOUND + 1,
+							     nowait),
 					t);
 				cifs_num_waiters_dec(server);
 				if (!rc) {
@@ -589,6 +602,10 @@ wait_for_compound_request(struct TCP_Server_Info *server, int num,
 
 	credits = server->ops->get_credits_field(server, flags & CIFS_OP_MASK);
 
+	if ((flags & CIFS_NO_RECONNECT_WAIT) &&
+	    READ_ONCE(server->tcpStatus) == CifsNeedReconnect)
+		return -EAGAIN;
+
 	spin_lock(&server->req_lock);
 	scredits = *credits;
 	in_flight = server->in_flight;
@@ -612,6 +629,9 @@ wait_for_compound_request(struct TCP_Server_Info *server, int num,
 		 */
 		if (server->in_flight == 0) {
 			spin_unlock(&server->req_lock);
+			if ((flags & CIFS_NO_RECONNECT_WAIT) &&
+			    READ_ONCE(server->tcpStatus) == CifsNeedReconnect)
+				return -EAGAIN;
 			trace_smb3_insufficient_credits(server->current_mid,
 					server->conn_id, server->hostname, scredits,
 					num, in_flight);
@@ -628,7 +648,7 @@ wait_for_compound_request(struct TCP_Server_Info *server, int num,
 
 int
 cifs_wait_mtu_credits(struct TCP_Server_Info *server, size_t size,
-		      size_t *num, struct cifs_credits *credits)
+		      size_t *num, struct cifs_credits *credits, bool nowait)
 {
 	*num = size;
 	credits->value = 0;
@@ -652,6 +672,26 @@ int wait_for_response(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 		return -ERESTARTSYS;
 
 	return 0;
+}
+
+static void cond_sock_shutdown(struct TCP_Server_Info *server)
+{
+	bool shutdown;
+
+	lockdep_assert_held(&server->_srv_mutex);
+
+	spin_lock(&server->srv_lock);
+	/*
+	 * No need to check status, ->need_sock_shutdown is only set when it's
+	 * CifsNeedReconnect.
+	 */
+	shutdown = server->need_sock_shutdown && server->ssocket;
+	server->need_sock_shutdown = false;
+	spin_unlock(&server->srv_lock);
+
+	if (shutdown)
+		/* Don't release it here/yet! */
+		kernel_sock_shutdown(server->ssocket, SHUT_RDWR);
 }
 
 /*
@@ -724,6 +764,7 @@ cifs_call_async(struct TCP_Server_Info *server, struct smb_rqst *rqst,
 		revert_current_mid(server, mid->credits);
 		server->sequence_number -= 2;
 		delete_mid(server, mid);
+		cond_sock_shutdown(server);
 	}
 
 	cifs_server_unlock(server);
@@ -982,6 +1023,7 @@ compound_send_recv(const unsigned int xid, struct cifs_ses *ses,
 			delete_mid(server, mid[i]);
 			cancelled_mid[i] = true;
 		}
+		cond_sock_shutdown(server);
 	}
 
 	cifs_server_unlock(server);
@@ -1317,6 +1359,8 @@ cifs_readv_receive(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 #endif
 		length = cifs_read_iter_from_socket(server, &rdata->subreq.io_iter,
 						    data_len);
+	if (length < 0)
+		return length;
 	if (length > 0)
 		rdata->got_bytes += length;
 	server->total_read += length;
